@@ -1,9 +1,3 @@
-"""Resource de sistema.
-
-Endpoints para setup inicial (criar tabela e vectorizer),
-carga de dados de exemplo (Wikipedia) e monitoramento.
-"""
-
 import logging
 
 import requests as req
@@ -15,10 +9,6 @@ from api.database import get_cursor
 logger = logging.getLogger(__name__)
 
 ns = Namespace("system", description="Setup e monitoramento do sistema")
-
-# ──────────────────────────────────────────────────
-# Models Swagger
-# ──────────────────────────────────────────────────
 
 setup_response = ns.model(
     "SetupResponse",
@@ -58,12 +48,7 @@ health_model = ns.model(
 )
 
 
-# ──────────────────────────────────────────────────
-# Artigos da Wikipedia para seed
-# ──────────────────────────────────────────────────
-
 WIKI_ARTICLES = [
-    # --- Batch 1: AI e Banco de Dados ---
     {
         "url": "https://en.wikipedia.org/wiki/PostgreSQL",
         "title": "PostgreSQL",
@@ -220,7 +205,6 @@ WIKI_ARTICLES = [
             "dimensionality reduction, and probabilistic models."
         ),
     },
-    # --- Batch 2: Mais temas ---
     {
         "url": "https://en.wikipedia.org/wiki/Deep_learning",
         "title": "Deep learning",
@@ -380,29 +364,14 @@ WIKI_ARTICLES = [
 ]
 
 
-# ──────────────────────────────────────────────────
-# Resources
-# ──────────────────────────────────────────────────
-
-
 @ns.route("/setup")
 class Setup(Resource):
-    """Setup inicial do sistema."""
-
     @ns.marshal_with(setup_response)
     def post(self):
-        """Cria a tabela de documentos e o vectorizer.
-
-        - Cria a tabela 'documents' se não existir
-        - Cria o vectorizer que configura o pgai para gerar
-          embeddings automaticamente usando nomic-embed-text
-        - O vectorizer worker começa a processar automaticamente
-        """
         table_created = False
         vectorizer_created = False
 
         with get_cursor() as cur:
-            # Criar tabela de documentos
             cur.execute(
                 """
                 CREATE TABLE IF NOT EXISTS documents (
@@ -416,7 +385,6 @@ class Setup(Resource):
             table_created = True
             logger.info("Tabela 'documents' verificada/criada")
 
-            # Criar vectorizer (pgai 0.12.1)
             try:
                 cur.execute(
                     """
@@ -459,21 +427,11 @@ class Setup(Resource):
 
 @ns.route("/seed")
 class Seed(Resource):
-    """Carga de artigos de exemplo da Wikipedia."""
-
     @ns.marshal_with(seed_response)
     def post(self):
-        """Carrega artigos da Wikipedia como dados de exemplo.
-
-        Insere 20 artigos sobre temas de IA, banco de dados, NLP,
-        programação e cloud. O vectorizer worker gera os embeddings
-        automaticamente. Após inserir, aguarde pending_items chegar
-        a 0 no endpoint /api/system/vectorizer/status.
-        """
         inserted = 0
 
         with get_cursor() as cur:
-            # Verificar se a tabela existe
             cur.execute(
                 """
                 SELECT EXISTS (
@@ -490,7 +448,6 @@ class Seed(Resource):
                 )
 
             for article in WIKI_ARTICLES:
-                # Evitar duplicatas pelo título
                 cur.execute(
                     "SELECT id FROM documents WHERE title = %s",
                     (article["title"],),
@@ -528,15 +485,8 @@ class Seed(Resource):
 
 @ns.route("/vectorizer/status")
 class VectorizerStatus(Resource):
-    """Status do vectorizer."""
-
     @ns.marshal_list_with(vectorizer_status_model)
     def get(self):
-        """Retorna o status dos vectorizers.
-
-        Mostra quantos itens estão pendentes de embedding.
-        Quando pending_items = 0, todos os embeddings foram gerados.
-        """
         try:
             with get_cursor() as cur:
                 cur.execute(
@@ -561,14 +511,10 @@ class VectorizerStatus(Resource):
 
 @ns.route("/health")
 class Health(Resource):
-    """Verificação de saúde do sistema."""
-
     @ns.marshal_with(health_model)
     def get(self):
-        """Verifica a conectividade com o banco e o Ollama."""
         result = {}
 
-        # Verificar banco
         try:
             with get_cursor() as cur:
                 cur.execute("SELECT 1")
@@ -576,7 +522,6 @@ class Health(Resource):
         except Exception:
             result["database"] = "erro"
 
-        # Verificar Ollama
         try:
             resp = req.get(f"{Config.OLLAMA_HOST}/api/tags", timeout=5)
             resp.raise_for_status()

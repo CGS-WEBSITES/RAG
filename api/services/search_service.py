@@ -1,9 +1,3 @@
-"""Service de busca semântica.
-
-Gera embedding da query via Ollama HTTP e busca por similaridade
-na tabela de embeddings criada pelo vectorizer.
-"""
-
 import logging
 from typing import Any
 
@@ -16,17 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 def _ollama_embed(text: str) -> list[float]:
-    """Gera embedding de um texto via Ollama API.
-
-    Args:
-        text: Texto para gerar embedding.
-
-    Returns:
-        Lista de floats representando o vetor.
-
-    Raises:
-        RuntimeError: Se o Ollama não responder corretamente.
-    """
     url = f"{Config.OLLAMA_HOST.rstrip('/')}/api/embeddings"
     payload = {"model": Config.EMBEDDING_MODEL, "prompt": text}
 
@@ -47,32 +30,15 @@ def _ollama_embed(text: str) -> list[float]:
 def semantic_search(
     query: str, limit: int = 5, max_distance: float = 1.5
 ) -> list[dict[str, Any]]:
-    """Busca semântica nos documentos usando embeddings.
-
-    Fluxo:
-    1. Gera embedding da query via Ollama
-    2. Compara com os embeddings da tabela usando distância cosseno
-    3. Retorna os trechos mais similares
-
-    Args:
-        query: Texto da busca.
-        limit: Número máximo de resultados (1-20).
-        max_distance: Distância máxima para considerar relevante.
-
-    Returns:
-        Lista de resultados com id, title, chunk e distance.
-    """
     query = (query or "").strip()
     if not query:
         return []
 
     limit = max(1, min(int(limit), 20))
 
-    # 1. Gerar embedding da query
     query_embedding = _ollama_embed(query)
     vec_literal = "[" + ",".join(f"{x:.8f}" for x in query_embedding) + "]"
 
-    # 2. Buscar por similaridade na tabela de embeddings
     sql = """
         SELECT
             doc.id,

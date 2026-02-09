@@ -1,19 +1,8 @@
-"""Resource de RAG (Retrieval Augmented Generation).
-
-Endpoint que combina busca semântica com geração
-de resposta via LLM para responder perguntas
-baseadas nos documentos armazenados.
-"""
-
 from flask_restx import Namespace, Resource, fields
 
 from api.services.rag_service import generate_rag_response
 
 ns = Namespace("rag", description="RAG - Perguntas e respostas com IA")
-
-# ──────────────────────────────────────────────
-# Models Swagger
-# ──────────────────────────────────────────────
 
 rag_input = ns.model(
     "RAGInput",
@@ -60,27 +49,11 @@ rag_output = ns.model(
 )
 
 
-# ──────────────────────────────────────────────
-# Resource
-# ──────────────────────────────────────────────
-
-
 @ns.route("/")
 class RAGQuery(Resource):
-    """Perguntas e respostas com RAG."""
-
     @ns.expect(rag_input, validate=True)
     @ns.marshal_with(rag_output)
     def post(self):
-        """Realiza RAG: busca contexto relevante e gera resposta via LLM.
-
-        Fluxo:
-        1. Recebe a pergunta do usuário
-        2. Busca os trechos mais similares no PostgreSQL (busca semântica)
-        3. Monta um contexto com esses trechos
-        4. Envia contexto + pergunta para o LLM (Ollama)
-        5. Retorna a resposta gerada junto com as fontes usadas
-        """
         data = ns.payload
         question = data["question"]
         max_chunks = min(max(data.get("max_chunks", 5), 1), 10)

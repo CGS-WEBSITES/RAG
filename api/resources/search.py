@@ -1,9 +1,3 @@
-"""Resource de busca semântica.
-
-Endpoint para buscar documentos por similaridade semântica usando embeddings
-e pgvector.
-"""
-
 from flask_restx import Namespace, Resource, fields, reqparse
 
 from api.services.search_service import semantic_search
@@ -46,12 +40,6 @@ class SemanticSearch(Resource):
     @ns.expect(search_parser)
     @ns.marshal_with(search_response)
     def get(self):
-        """Busca semântica nos documentos usando embeddings.
-
-        Pesquise qualquer termo ou frase. A busca é por significado,
-        não por palavra exata. Retorna os trechos mais relevantes
-        dos documentos armazenados.
-        """
         args = search_parser.parse_args()
         query = args["q"]
         limit = min(max(args["limit"], 1), 20)

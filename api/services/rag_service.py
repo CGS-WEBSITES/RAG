@@ -1,12 +1,3 @@
-"""Service de RAG (Retrieval Augmented Generation).
-
-Combina busca semântica com geração de resposta via LLM:
-1. Busca os trechos mais relevantes no PostgreSQL
-2. Monta o contexto com esses trechos
-3. Envia contexto + pergunta para o LLM (Ollama)
-4. Retorna a resposta gerada junto com as fontes usadas
-"""
-
 import logging
 from typing import Any
 
@@ -23,23 +14,8 @@ def generate_rag_response(
     max_chunks: int = 5,
     model: str | None = None,
 ) -> dict[str, Any]:
-    """Realiza RAG: busca contexto e gera resposta via LLM.
-
-    Args:
-        question: Pergunta em linguagem natural.
-        max_chunks: Número máximo de chunks de contexto.
-        model: Modelo LLM a usar (default: config).
-
-    Returns:
-        Dicionário com a resposta, fontes e modelo usado.
-
-    Raises:
-        ConnectionError: Se o Ollama não estiver acessível.
-        RuntimeError: Se o LLM retornar erro.
-    """
     model = model or Config.LLM_MODEL
 
-    # 1. Busca semântica - encontrar trechos relevantes
     chunks = semantic_search(question, limit=max_chunks)
 
     if not chunks:
@@ -50,10 +26,8 @@ def generate_rag_response(
             "model": model,
         }
 
-    # 2. Montar contexto com os trechos encontrados
     context = "\n\n".join(f"[{chunk['title']}]: {chunk['chunk']}" for chunk in chunks)
 
-    # 3. Montar prompt para o LLM
     prompt = (
         "Você é um assistente que responde perguntas baseado apenas "
         "no contexto fornecido. Se a resposta não estiver no contexto, "
@@ -63,7 +37,6 @@ def generate_rag_response(
         "Resposta:"
     )
 
-    # 4. Chamar o LLM via Ollama API
     try:
         response = requests.post(
             f"{Config.OLLAMA_HOST}/api/generate",
@@ -93,7 +66,6 @@ def generate_rag_response(
 
     answer = data.get("response", "Sem resposta do modelo.")
 
-    # 5. Montar resposta com fontes
     sources = [
         {
             "id": chunk["id"],
