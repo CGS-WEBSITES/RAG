@@ -21,20 +21,31 @@ def generate_rag_response(
     if not chunks:
         return {
             "question": question,
-            "answer": "Nenhum documento relevante encontrado na base de dados.",
+            "answer": "No relevant documents found in the knowledge base.",
             "sources": [],
             "model": model,
         }
 
-    context = "\n\n".join(f"[{chunk['title']}]: {chunk['chunk']}" for chunk in chunks)
+    # Build numbered context
+    context_parts = []
+    for i, chunk in enumerate(chunks, 1):
+        context_parts.append(f"[Document {i} - {chunk['title']}]:\n{chunk['chunk']}")
 
+    context = "\n\n".join(context_parts)
+
+    # Improved prompt for better responses
     prompt = (
-        "Você é um assistente que responde perguntas baseado apenas "
-        "no contexto fornecido. Se a resposta não estiver no contexto, "
-        "diga que não tem informação suficiente.\n\n"
-        f"Contexto:\n{context}\n\n"
-        f"Pergunta: {question}\n\n"
-        "Resposta:"
+        "You are a helpful assistant that answers questions based ONLY on the "
+        "documents provided below.\n\n"
+        "INSTRUCTIONS:\n"
+        "1. Use ONLY information from the provided documents to answer\n"
+        "2. If the information is in the documents, provide a clear and complete answer\n"
+        "3. Cite relevant documents when appropriate (e.g., 'According to Document 2...')\n"
+        "4. If the information is NOT in the documents, respond with EXACTLY: "
+        "'I could not find information about this in the available documents.'\n\n"
+        f"DOCUMENTS:\n{context}\n\n"
+        f"QUESTION: {question}\n\n"
+        "ANSWER:"
     )
 
     try:
@@ -44,27 +55,31 @@ def generate_rag_response(
                 "model": model,
                 "prompt": prompt,
                 "stream": False,
+                "options": {
+                    "temperature": 0.3,
+                    "top_p": 0.9,
+                },
             },
             timeout=120,
         )
         response.raise_for_status()
     except requests.ConnectionError:
-        logger.error("Ollama não acessível em %s", Config.OLLAMA_HOST)
+        logger.error("Ollama not accessible at %s", Config.OLLAMA_HOST)
         raise ConnectionError(
-            f"Ollama não acessível em {Config.OLLAMA_HOST}. "
-            "Verifique se o container está rodando."
+            f"Ollama not accessible at {Config.OLLAMA_HOST}. "
+            "Please check if the container is running."
         )
     except requests.Timeout:
-        logger.error("Timeout ao chamar o LLM")
-        raise RuntimeError("Timeout ao gerar resposta. Tente novamente.")
+        logger.error("Timeout calling LLM")
+        raise RuntimeError("Timeout generating response. Please try again.")
 
     data = response.json()
 
     if "error" in data:
-        logger.error("Erro do Ollama: %s", data["error"])
-        raise RuntimeError(f"Erro do Ollama: {data['error']}")
+        logger.error("Ollama error: %s", data["error"])
+        raise RuntimeError(f"Ollama error: {data['error']}")
 
-    answer = data.get("response", "Sem resposta do modelo.")
+    answer = data.get("response", "No response from model.").strip()
 
     sources = [
         {
@@ -77,7 +92,7 @@ def generate_rag_response(
     ]
 
     logger.info(
-        "RAG concluído: question='%s', sources=%d, model=%s",
+        "RAG completed: question='%s', sources=%d, model=%s",
         question[:50],
         len(sources),
         model,
