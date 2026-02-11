@@ -1,0 +1,133 @@
+{
+    "INSTITUCIONAL_CGS": {
+        "papel": "Coração criativo que conecta todos os universos.",
+        "voz": "Visionária, inspiradora e inventiva.",
+        "tagline": "We build the worlds. You make it yours.",
+        "diretrizes": "Dar palco para cada universo brilhar sem competir com submarcas."
+    },
+    "DANTE_INFERNO": {
+        "matriz_arquetipica": "Criador Abismal – Implacável",
+        "slogan": "Desça. Testemunhe. Lembre-se.",
+        "essencia_da_voz": "Testemunho consagrado - grave, melancólico - guiando o jogador por uma travessia de condenação.",
+        "tom": "Grave, melancólico, solene e implacável.",
+        "ritmo": "Autoritária, disciplinada e implacável. Afirma o que deve ser feito.",
+        "humor": "Tons de ironia e sarcasmo ocasionais (eco trágico).",
+        "vocabulario": {
+            "palavras_chave": [
+                "abismo",
+                "pecado",
+                "penitência",
+                "ruína",
+                "vigília",
+                "queda",
+                "cruzada",
+                "condenação",
+                "lâmina",
+                "sombras",
+                "alma",
+                "fardo",
+                "destino"
+            ],
+            "verbos": [
+                "descer",
+                "testemunhar",
+                "suportar",
+                "invocar",
+                "resistir",
+                "confrontar",
+                "carregar",
+                "revelar",
+                "pecar"
+            ],
+            "adjetivos": [
+                "melancólico",
+                "inevitável",
+                "sagrado",
+                "quebrado",
+                "profundo",
+                "ancestral",
+                "condenado",
+                "eterno"
+            ]
+        },
+        "o_que_evitar": [
+            "Termos modernos",
+            "coloquiais",
+            "leves",
+            "humorísticos",
+            "linguagem que quebre a solenidade ritual"
+        ],
+        "pontos_de_contato": {
+            "redes_sociais": "Atmosférico, contemplativo, paleta austera, silêncio como recurso.",
+            "embalagens": "Manuscritos antigos, relíquias, sensação de artefato encontrado.",
+            "sac_comunidade": "Rápido, humano e acolhedor. Permite expressões leves para suavizar problemas."
+        }
+    },
+    "CHRONICLES_OF_DRUNAGOR": {
+        "matriz_arquetipica": "Criador Épico",
+        "slogan": "Ergam-se. Resistam. Registrem-se.",
+        "essencia_da_voz": "Cronista das trevas ascendentes - sombrio, épico e ancestral.",
+        "tom": "Grave, épico, sombrio e carregado de urgência.",
+        "ritmo": "Frases longas e cerimoniais, pausas secas que reforçam a tensão.",
+        "humor": "Ausente.",
+        "vocabulario": {
+            "palavras_chave": [
+                "sombra",
+                "ruína",
+                "abismo",
+                "corrupção",
+                "estilhaço",
+                "vigília",
+                "fenda",
+                "silêncio",
+                "eco",
+                "ameaça",
+                "trevas",
+                "ciclo",
+                "fardo"
+            ],
+            "verbos": [
+                "resistir",
+                "erguer-se",
+                "enfrentar",
+                "proteger",
+                "suportar",
+                "recuar",
+                "tombar",
+                "avançar",
+                "consumar",
+                "vigiar",
+                "registrar"
+            ],
+            "adjetivos": [
+                "sombrio",
+                "ancestral",
+                "inevitável",
+                "trágico",
+                "consumido",
+                "fragmentado",
+                "devastado",
+                "crescente",
+                "implacável",
+                "épico"
+            ]
+        },
+        "o_que_evitar": [
+            "Linguagem moderna",
+            "casual",
+            "humorística",
+            "desmotivar o jogador"
+        ],
+        "pontos_de_contato": {
+            "redes_sociais": "Tensão e progressão épica, foco em profundidade e mood.",
+            "embalagens": "Tomos antigos, armaduras deterioradas, registros de sentinelas.",
+            "sac_comunidade": "Sério e respeitoso. Reconhecimento do esforço (cada interação é parte das Crônicas)."
+        }
+    },
+    "FORFUN": {
+        "arquétipo": "Criador Lúdico",
+        "essencia": "O amigo divertido da mesa.",
+        "tom": "Leve, acolhedora e criativa.",
+        "objetivo": "Brincar sem pressão, rir dos erros, conexão e alegria compartilhada."
+    }
+}
