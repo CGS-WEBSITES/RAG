@@ -15,7 +15,6 @@ class Config:
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "postgres")
 
     OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-
     OLLAMA_HOST_SQL: str = os.getenv("OLLAMA_HOST_SQL", "http://ollama:11434")
 
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
