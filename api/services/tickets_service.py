@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, List
 from sentence_transformers import SentenceTransformer
 
 from api.database import get_cursor
@@ -11,6 +11,30 @@ logger = logging.getLogger(__name__)
 class TicketsService:
     def __init__(self):
         self.model = SentenceTransformer("all-MiniLM-L6-v2")
+
+    def buscar_por_texto(self, texto: str, limite: int = 10) -> List[Dict[str, Any]]:
+        """Busca tickets por similaridade semântica"""
+        try:
+            embedding = self.model.encode(texto).tolist()
+
+            with get_cursor(dict_cursor=True) as cur:
+                cur.execute(
+                    """
+                    SELECT id_original, pergunta, resposta, projeto,
+                           1 - (embedding <=> %s::vector) AS similaridade
+                    FROM tickets
+                    ORDER BY embedding <=> %s::vector
+                    LIMIT %s
+                    """,
+                    (embedding, embedding, limite),
+                )
+                results = cur.fetchall()
+
+            return [dict(row) for row in results]
+
+        except Exception as e:
+            logger.error(f"Erro ao buscar tickets: {e}")
+            raise
 
     def processar_json(self, filepath: str, batch_size: int = 200) -> Dict[str, Any]:
         """Processa arquivo JSON consolidado de tickets e insere no banco em lotes"""
@@ -98,9 +122,7 @@ class TicketsService:
                 "total_registros": total,
                 "registros_processados": registros_processados,
                 "registros_duplicados": total - registros_processados,
-                "erros": erros[
-                    :10
-                ],  # Limitar erros retornados para não sobrecarregar resposta
+                "erros": erros[:10],
             }
 
         except Exception as e:
