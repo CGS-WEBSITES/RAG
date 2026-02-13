@@ -43,3 +43,19 @@ class LogisticsByProject(Resource):
         except Exception as e:
             logger.error(f"Erro ao buscar logística: {e}")
             ns.abort(500, f"Erro na busca: {str(e)}")
+
+
+@ns.route("/projetos")
+class LogisticsProjects(Resource):
+    @ns.doc("list_projects")
+    @ns.response(200, "Lista de projetos")
+    def get(self):
+        try:
+            service = LogisticsService()
+            projetos = service.listar_projetos()
+
+            return {"projetos": projetos, "total": len(projetos)}
+
+        except Exception as e:
+            logger.error(f"Erro ao listar projetos: {e}")
+            ns.abort(500, f"Erro ao listar projetos: {str(e)}")

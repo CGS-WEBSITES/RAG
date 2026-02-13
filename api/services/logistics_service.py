@@ -111,7 +111,7 @@ class LogisticsService:
             cur.execute(
                 """
                 SELECT id_update, data_relatorio, projeto, regiao,
-                      status_atual, conclusao_estimada, observacoes_backer
+                    status_atual, conclusao_estimada, observacoes_backer
                 FROM logistica_status
                 WHERE projeto ILIKE %s
                 ORDER BY data_relatorio DESC
@@ -119,3 +119,15 @@ class LogisticsService:
                 (f"%{projeto}%",),
             )
             return cur.fetchall()
+
+    def listar_projetos(self) -> List[Dict[str, Any]]:
+        with get_cursor(dict_cursor=True) as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT projeto, COUNT(*) as total_registros
+                FROM logistica_status
+                GROUP BY projeto
+                ORDER BY projeto
+                """
+            )
+            return [dict(row) for row in cur.fetchall()]
