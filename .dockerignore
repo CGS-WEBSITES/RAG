@@ -1,0 +1,40 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Git
+.git/
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dados locais
+**/*.csv
+**/*.json
+**/*.pdf
+**/tmp/
+**/temp/
+
+# Scripts (processamento via API)
+scripts/
+
+# Docker (não precisa copiar pra dentro da imagem)
+docker-compose.yml
+compose_up.sh
+.env

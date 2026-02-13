@@ -1,4 +1,5 @@
-name: pgai 
+name: pgai
+
 services:
   db:
     image: timescale/timescaledb-ha:pg17
@@ -8,15 +9,60 @@ services:
       - "5432:5432"
     volumes:
       - data:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   vectorizer-worker:
     image: timescale/pgai-vectorizer-worker:latest
     environment:
       PGAI_VECTORIZER_WORKER_DB_URL: postgres://postgres:postgres@db:5432/postgres
       OLLAMA_HOST: http://ollama:11434
-    command: [ "--poll-interval", "5s" ]
-  ollama:
-    image: ollama/ollama
+    command: ["--poll-interval", "5s"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
     ports:
-      - "11434:11434"
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: postgres
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_HOST_SQL: http://ollama:11434
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-768}
+      LLM_MODEL: ${LLM_MODEL:-llama3.2}
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ./api:/app/api
+      - ./scripts:/app/scripts
+    restart: unless-stopped
+
 volumes:
   data:
+  ollama_data:
