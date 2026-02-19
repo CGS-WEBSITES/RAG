@@ -14,5 +14,8 @@ python -m pgai install -d "$DB_URL" 2>/dev/null || echo "    pgai já instalado 
 echo "==> Criando tabelas..."
 python3 -m api.sql.setup_tables
 
+echo "==> Populando dados iniciais..."
+python3 -m scripts.seed_data
+
 echo "==> Iniciando API Flask..."
 exec python3 -m api.app
