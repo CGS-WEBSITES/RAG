@@ -3,16 +3,13 @@ import sys
 from pathlib import Path
 import psycopg2
 
-# Adicionar o diretório raiz ao PYTHONPATH
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
-# Agora pode importar
 from api.config import Config
 
 
 def setup_tables():
-    """Cria as tabelas necessárias no banco de dados"""
     print("=" * 50)
     print("SETUP DE TABELAS")
     print("=" * 50)

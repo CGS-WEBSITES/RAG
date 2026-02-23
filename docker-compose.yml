@@ -17,6 +17,9 @@ services:
 
   ollama:
     image: ollama/ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: "10m"
+      OLLAMA_MAX_LOADED_MODELS: "2"
     ports:
       - "11434:11434"
     volumes:
@@ -50,8 +53,8 @@ services:
       DB_PASSWORD: postgres
       OLLAMA_HOST: http://ollama:11434
       OLLAMA_HOST_SQL: http://ollama:11434
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
-      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-768}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-all-minilm}
+      EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-384}
       LLM_MODEL: ${LLM_MODEL:-llama3.2}
     depends_on:
       db:

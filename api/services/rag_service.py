@@ -9,14 +9,44 @@ from api.services.search_service import semantic_search
 logger = logging.getLogger(__name__)
 
 
+MAX_CHUNK_LENGTH = 500  # Truncar chunks longos para reduzir tokens do prompt
+RELEVANCE_THRESHOLD = 1.0  # Ignorar chunks com distância > este valor
+
+
+def _filter_chunks(chunks: list[dict]) -> list[dict]:
+    """Remove chunks de baixa relevância e trunca texto longo."""
+    return [c for c in chunks if c["distance"] < RELEVANCE_THRESHOLD]
+
+
+def _build_sources(chunks: list[dict]) -> list[dict]:
+    """Formata chunks como lista de sources para a resposta."""
+    return [
+        {
+            "id": chunk["id"],
+            "title": chunk["title"],
+            "chunk": chunk["chunk"],
+            "distance": round(float(chunk["distance"]), 4),
+        }
+        for chunk in chunks
+    ]
+
+
 def generate_rag_response(
     question: str,
     max_chunks: int = 5,
     model: str | None = None,
+    source: str | None = None,
+    exclude_sources: list[str] | None = None,
 ) -> dict[str, Any]:
     model = model or Config.LLM_MODEL
 
-    chunks = semantic_search(question, limit=max_chunks)
+    chunks = semantic_search(
+        question,
+        limit=max_chunks,
+        source=source,
+        exclude_sources=exclude_sources,
+    )
+    chunks = _filter_chunks(chunks)
 
     if not chunks:
         return {
@@ -26,14 +56,15 @@ def generate_rag_response(
             "model": model,
         }
 
-    # Build numbered context
     context_parts = []
     for i, chunk in enumerate(chunks, 1):
-        context_parts.append(f"[Document {i} - {chunk['title']}]:\n{chunk['chunk']}")
+        text = chunk["chunk"]
+        if len(text) > MAX_CHUNK_LENGTH:
+            text = text[:MAX_CHUNK_LENGTH] + "..."
+        context_parts.append(f"[Document {i} - {chunk['title']}]:\n{text}")
 
     context = "\n\n".join(context_parts)
 
-    # Improved prompt for better responses
     prompt = (
         "You are a helpful assistant that answers questions based ONLY on the "
         "documents provided below.\n\n"
@@ -58,9 +89,10 @@ def generate_rag_response(
                 "options": {
                     "temperature": 0.3,
                     "top_p": 0.9,
+                    "num_predict": 512,
                 },
             },
-            timeout=120,
+            timeout=300,  # 5 minutos para evitar timeout em máquinas lentas
         )
         response.raise_for_status()
     except requests.ConnectionError:
@@ -80,22 +112,14 @@ def generate_rag_response(
         raise RuntimeError(f"Ollama error: {data['error']}")
 
     answer = data.get("response", "No response from model.").strip()
-
-    sources = [
-        {
-            "id": chunk["id"],
-            "title": chunk["title"],
-            "chunk": chunk["chunk"],
-            "distance": round(chunk["distance"], 4),
-        }
-        for chunk in chunks
-    ]
+    sources = _build_sources(chunks)
 
     logger.info(
-        "RAG completed: question='%s', sources=%d, model=%s",
+        "RAG completed: question='%s', sources=%d, model=%s, source=%s",
         question[:50],
         len(sources),
         model,
+        source or "all",
     )
 
     return {
