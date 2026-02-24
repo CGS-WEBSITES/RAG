@@ -9,10 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from api.config import Config
 from api.database import init_pool
-from api.resources.documents import ns as documents_ns
-from api.resources.search import ns as search_ns
 from api.resources.rag import ns as rag_ns
-from api.resources.system import ns as system_ns
 from api.resources.imports import ns as imports_ns
 
 logging.basicConfig(
@@ -42,10 +39,7 @@ def create_app() -> Flask:
         doc="/docs",
     )
 
-    api.add_namespace(documents_ns, path="/api/documents")
-    api.add_namespace(search_ns, path="/api/search")
     api.add_namespace(rag_ns, path="/api/rag")
-    api.add_namespace(system_ns, path="/api/system")
     api.add_namespace(imports_ns, path="/api/import")
 
     with app.app_context():
