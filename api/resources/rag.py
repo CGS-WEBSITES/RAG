@@ -4,24 +4,51 @@ from api.services.rag_service import generate_rag_response
 
 ns = Namespace("rag", description="RAG - Perguntas e respostas com IA")
 
+_base_fields = {
+    "question": fields.String(
+        required=True,
+        description="Pergunta em linguagem natural",
+        example="Qual o status atual do projeto?",
+    ),
+    "model": fields.String(
+        default="llama3.2",
+        description="Modelo LLM do Ollama",
+        example="llama3.2",
+    ),
+}
 
-rag_input = ns.model(
-    "RAGInput",
+rag_input_logistics = ns.model(
+    "RAGInputLogistics",
     {
-        "question": fields.String(
-            required=True,
-            description="Pergunta em linguagem natural",
-            example="Qual o status atual do projeto?",
-        ),
+        **_base_fields,
         "max_chunks": fields.Integer(
-            default=5,
+            default=1,
             description="Máximo de trechos de contexto (1-10)",
-            example=5,
+            example=1,
         ),
-        "model": fields.String(
-            default="llama3.2",
-            description="Modelo LLM do Ollama",
-            example="llama3.2",
+    },
+)
+
+rag_input_tickets = ns.model(
+    "RAGInputTickets",
+    {
+        **_base_fields,
+        "max_chunks": fields.Integer(
+            default=3,
+            description="Máximo de trechos de contexto (1-10)",
+            example=3,
+        ),
+    },
+)
+
+rag_input_voice_tone = ns.model(
+    "RAGInputVoiceTone",
+    {
+        **_base_fields,
+        "max_chunks": fields.Integer(
+            default=3,
+            description="Máximo de trechos de contexto (1-10)",
+            example=3,
         ),
     },
 )
@@ -47,11 +74,10 @@ rag_output = ns.model(
 )
 
 
-def _handle_rag(source: str | None, exclude_sources: list[str] | None = None):
-    """Helper compartilhado entre os endpoints."""
+def _handle_rag(source: str, default_max_chunks: int = 3):
     data = ns.payload
     question = data["question"]
-    max_chunks = min(max(data.get("max_chunks", 5), 1), 10)
+    max_chunks = min(max(data.get("max_chunks", default_max_chunks), 1), 10)
     model = data.get("model")
 
     try:
@@ -60,7 +86,6 @@ def _handle_rag(source: str | None, exclude_sources: list[str] | None = None):
             max_chunks=max_chunks,
             model=model,
             source=source,
-            exclude_sources=exclude_sources,
         )
     except ConnectionError as e:
         ns.abort(503, str(e))
@@ -70,44 +95,28 @@ def _handle_rag(source: str | None, exclude_sources: list[str] | None = None):
         ns.abort(500, f"Erro inesperado: {str(e)}")
 
 
-@ns.route("/documents")
-class RAGDocuments(Resource):
-    @ns.doc("rag_documents")
-    @ns.expect(rag_input, validate=True)
-    @ns.marshal_with(rag_output)
-    def post(self):
-        """RAG sobre documentos gerais (exclui tickets, logistics e voice_tone)"""
-        return _handle_rag(
-            source=None,
-            exclude_sources=["logistics", "tickets", "voice_tone"],
-        )
-
-
 @ns.route("/logistics")
 class RAGLogistics(Resource):
     @ns.doc("rag_logistics")
-    @ns.expect(rag_input, validate=True)
+    @ns.expect(rag_input_logistics, validate=True)
     @ns.marshal_with(rag_output)
     def post(self):
-        """RAG sobre atualizações de logística"""
-        return _handle_rag(source="logistics")
+        return _handle_rag(source="logistics", default_max_chunks=1)
 
 
 @ns.route("/tickets")
 class RAGTickets(Resource):
     @ns.doc("rag_tickets")
-    @ns.expect(rag_input, validate=True)
+    @ns.expect(rag_input_tickets, validate=True)
     @ns.marshal_with(rag_output)
     def post(self):
-        """RAG sobre tickets de suporte"""
-        return _handle_rag(source="tickets")
+        return _handle_rag(source="tickets", default_max_chunks=3)
 
 
 @ns.route("/voice-tone")
 class RAGVoiceTone(Resource):
     @ns.doc("rag_voice_tone")
-    @ns.expect(rag_input, validate=True)
+    @ns.expect(rag_input_voice_tone, validate=True)
     @ns.marshal_with(rag_output)
     def post(self):
-        """RAG sobre diretrizes de Tom de Voz e IPs"""
-        return _handle_rag(source="voice_tone")
+        return _handle_rag(source="voice_tone", default_max_chunks=3)
