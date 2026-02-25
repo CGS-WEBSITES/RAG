@@ -9,7 +9,7 @@ from api.services.search_service import semantic_search
 logger = logging.getLogger(__name__)
 
 
-MAX_CHUNK_LENGTH = 500  # Truncar chunks longos para reduzir tokens do prompt
+MAX_CHUNK_LENGTH = 300  # Truncar chunks longos para reduzir tokens do prompt
 RELEVANCE_THRESHOLD = 1.0  # Ignorar chunks com distância > este valor
 
 

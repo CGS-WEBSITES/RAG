@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS logistica_status (
     links_visuais TEXT,
     observacoes_backer TEXT,
     descricao TEXT,
-    embedding vector(384),
+    embedding vector(768),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     pergunta TEXT NOT NULL,
     resposta TEXT,
     projeto VARCHAR(200),
-    embedding vector(384),
+    embedding vector(768),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS conhecimento_ips (
     ip_nome VARCHAR(200) NOT NULL,
     categoria VARCHAR(200) NOT NULL,
     conteudo TEXT NOT NULL,
-    embedding vector(384),
+    embedding vector(768),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
