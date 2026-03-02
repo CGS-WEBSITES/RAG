@@ -8,11 +8,9 @@ from flask_restx import Api
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from api.config import Config
-from api.database import init_pool, close_pool
-from api.resources.documents import ns as documents_ns
-from api.resources.search import ns as search_ns
+from api.database import init_pool
 from api.resources.rag import ns as rag_ns
-from api.resources.system import ns as system_ns
+from api.resources.imports import ns as imports_ns
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,6 +22,9 @@ logger = logging.getLogger(__name__)
 
 def create_app() -> Flask:
     app = Flask(__name__)
+    app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
+    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+    app.config["TIMEOUT"] = 600
 
     api = Api(
         app,
@@ -34,16 +35,12 @@ def create_app() -> Flask:
             f"**Embedding Model:** {Config.EMBEDDING_MODEL} "
             f"({Config.EMBEDDING_DIMENSIONS}d)\n\n"
             f"**LLM Model:** {Config.LLM_MODEL}\n\n"
-            "**Fluxo:** Inserir documentos → Vectorizer gera embeddings → "
-            "Buscar por similaridade → RAG gera respostas"
         ),
         doc="/docs",
     )
 
-    api.add_namespace(documents_ns, path="/api/documents")
-    api.add_namespace(search_ns, path="/api/search")
     api.add_namespace(rag_ns, path="/api/rag")
-    api.add_namespace(system_ns, path="/api/system")
+    api.add_namespace(imports_ns, path="/api/import")
 
     with app.app_context():
         try:

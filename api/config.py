@@ -14,13 +14,11 @@ class Config:
     DB_USER: str = os.getenv("DB_USER", "postgres")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "postgres")
 
-    OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
-    OLLAMA_HOST_SQL: str = os.getenv("OLLAMA_HOST_SQL", "http://ollama:11434")
-
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "nomic-embed-text")
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
     EMBEDDING_DIMENSIONS: int = int(os.getenv("EMBEDDING_DIMENSIONS", "768"))
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "llama3.2")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
 
     @classmethod
     def get_db_dsn(cls) -> str:
