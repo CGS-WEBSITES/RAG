@@ -1,8 +1,6 @@
 flask
 flask-restx
+psycopg[binary,pool]
 psycopg2-binary
 python-dotenv
-sentence-transformers
-pandas
-requests
-pgai
+openai

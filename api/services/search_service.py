@@ -2,36 +2,51 @@ import logging
 from functools import lru_cache
 from typing import Any
 
-import requests
+from openai import OpenAI
 
 from api.config import Config
 from api.database import get_cursor
 
 logger = logging.getLogger(__name__)
 
+_client = None
 
-def _ollama_embed(text: str) -> list[float]:
-    url = f"{Config.OLLAMA_HOST.rstrip('/')}/api/embeddings"
-    payload = {"model": Config.EMBEDDING_MODEL, "prompt": text}
+
+def _get_client() -> OpenAI:
+    """Lazy singleton do client OpenAI."""
+    global _client
+    if _client is None:
+        if not Config.OPENAI_API_KEY:
+            raise RuntimeError("OPENAI_API_KEY não configurada no .env")
+        _client = OpenAI(api_key=Config.OPENAI_API_KEY)
+    return _client
+
+
+def _openai_embed(text: str) -> list[float]:
+    """Gera embedding via OpenAI API."""
+    client = _get_client()
 
     try:
-        resp = requests.post(url, json=payload, timeout=300)
-        resp.raise_for_status()
-    except requests.RequestException as e:
-        raise RuntimeError(f"Ollama indisponível em {Config.OLLAMA_HOST}: {e}") from e
+        response = client.embeddings.create(
+            model=Config.EMBEDDING_MODEL,
+            input=text,
+            dimensions=Config.EMBEDDING_DIMENSIONS,
+        )
+    except Exception as e:
+        raise RuntimeError(f"Erro ao gerar embedding via OpenAI: {e}") from e
 
-    data = resp.json()
-    embedding = data.get("embedding")
+    embedding = response.data[0].embedding
+
     if not isinstance(embedding, list) or not embedding:
-        raise RuntimeError(f"Embedding inválido retornado: {data}")
+        raise RuntimeError(f"Embedding inválido retornado: {response}")
 
-    return [float(x) for x in embedding]
+    return embedding
 
 
 @lru_cache(maxsize=256)
-def _ollama_embed_cached(text: str) -> tuple[float, ...]:
+def _openai_embed_cached(text: str) -> tuple[float, ...]:
     """Cache embeddings para queries repetidas."""
-    return tuple(_ollama_embed(text))
+    return tuple(_openai_embed(text))
 
 
 def semantic_search(
@@ -48,7 +63,7 @@ def semantic_search(
     limit = max(1, min(int(limit), 20))
 
     # Usa cache para evitar re-embeddings de queries repetidas
-    query_embedding = list(_ollama_embed_cached(query.lower()))
+    query_embedding = list(_openai_embed_cached(query.lower()))
     vec_literal = "[" + ",".join(f"{x:.8f}" for x in query_embedding) + "]"
 
     # Monta filtros de source
