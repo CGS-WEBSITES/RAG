@@ -4,8 +4,6 @@ from api.services.rag_service import generate_rag_response
 
 ns = Namespace("rag", description="RAG - Perguntas e respostas com IA")
 
-# --- Modelos ---
-
 _base_fields = {
     "question": fields.String(
         required=True,
@@ -103,7 +101,6 @@ class RAGLogistics(Resource):
     @ns.expect(rag_input_logistics, validate=True)
     @ns.marshal_with(rag_output)
     def post(self):
-        """RAG sobre atualizações de logística"""
         return _handle_rag(source="logistics", default_max_chunks=1)
 
 
@@ -113,7 +110,6 @@ class RAGTickets(Resource):
     @ns.expect(rag_input_tickets, validate=True)
     @ns.marshal_with(rag_output)
     def post(self):
-        """RAG sobre tickets de suporte"""
         return _handle_rag(source="tickets", default_max_chunks=3)
 
 
@@ -123,5 +119,4 @@ class RAGVoiceTone(Resource):
     @ns.expect(rag_input_voice_tone, validate=True)
     @ns.marshal_with(rag_output)
     def post(self):
-        """RAG sobre diretrizes de Tom de Voz e IPs"""
         return _handle_rag(source="voice_tone", default_max_chunks=3)

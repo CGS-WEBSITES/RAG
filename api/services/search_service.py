@@ -13,7 +13,6 @@ _client = None
 
 
 def _get_client() -> OpenAI:
-    """Lazy singleton do client OpenAI."""
     global _client
     if _client is None:
         if not Config.OPENAI_API_KEY:
@@ -23,7 +22,6 @@ def _get_client() -> OpenAI:
 
 
 def _openai_embed(text: str) -> list[float]:
-    """Gera embedding via OpenAI API."""
     client = _get_client()
 
     try:
@@ -45,7 +43,6 @@ def _openai_embed(text: str) -> list[float]:
 
 @lru_cache(maxsize=256)
 def _openai_embed_cached(text: str) -> tuple[float, ...]:
-    """Cache embeddings para queries repetidas."""
     return tuple(_openai_embed(text))
 
 
@@ -62,11 +59,9 @@ def semantic_search(
 
     limit = max(1, min(int(limit), 20))
 
-    # Usa cache para evitar re-embeddings de queries repetidas
     query_embedding = list(_openai_embed_cached(query.lower()))
     vec_literal = "[" + ",".join(f"{x:.8f}" for x in query_embedding) + "]"
 
-    # Monta filtros de source
     source_filter = ""
     params: list = [vec_literal]
 
@@ -84,7 +79,6 @@ def semantic_search(
     params.append(limit)
     params.append(max_distance)
 
-    # CTE calcula distância uma única vez
     sql = f"""
         WITH ranked AS (
             SELECT
@@ -92,7 +86,7 @@ def semantic_search(
                 doc.title,
                 emb.chunk,
                 emb.embedding <=> (%s)::vector AS distance
-            FROM public.documents_embeddings_store emb
+            FROM public.documents_embedding_store emb
             JOIN public.documents doc ON doc.id = emb.id
             WHERE 1=1
             {source_filter}

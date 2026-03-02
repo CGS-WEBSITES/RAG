@@ -8,17 +8,13 @@ from api.services.search_service import semantic_search
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constantes de otimização
-# ---------------------------------------------------------------------------
-MAX_CHUNK_LENGTH = 300  # Truncar chunks longos para reduzir tokens do prompt
-RELEVANCE_THRESHOLD = 1.0  # Ignorar chunks com distância > este valor
+MAX_CHUNK_LENGTH = 300
+RELEVANCE_THRESHOLD = 1.0
 
 _client = None
 
 
 def _get_client() -> OpenAI:
-    """Lazy singleton do client OpenAI."""
     global _client
     if _client is None:
         if not Config.OPENAI_API_KEY:
@@ -28,12 +24,10 @@ def _get_client() -> OpenAI:
 
 
 def _filter_chunks(chunks: list[dict]) -> list[dict]:
-    """Remove chunks de baixa relevância."""
     return [c for c in chunks if c["distance"] < RELEVANCE_THRESHOLD]
 
 
 def _build_sources(chunks: list[dict]) -> list[dict]:
-    """Formata chunks como lista de sources para a resposta."""
     return [
         {
             "id": chunk["id"],
