@@ -4,3 +4,4 @@ psycopg[binary,pool]
 psycopg2-binary
 python-dotenv
 openai
+pgai

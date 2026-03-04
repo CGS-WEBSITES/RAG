@@ -1,3 +1,18 @@
+-- Extensões necessárias
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS ai CASCADE;
+
+-- Tabela principal de documentos (usada pelo vectorizer para gerar embeddings)
+CREATE TABLE IF NOT EXISTS documents (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_documents_metadata_source ON documents ((metadata->>'source'));
+
 -- Tabela de logística
 CREATE TABLE IF NOT EXISTS logistica_status (
     id SERIAL PRIMARY KEY,
