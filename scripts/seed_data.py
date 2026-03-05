@@ -3,7 +3,6 @@ import logging
 import sys
 from pathlib import Path
 
-# Adicionar raiz ao path para imports da api
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
@@ -21,7 +20,6 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 
 
 def _count_by_source(source: str) -> int:
-    """Conta quantos documents já existem com um source específico."""
     with get_cursor() as cur:
         cur.execute(
             "SELECT COUNT(*) as total FROM documents " "WHERE metadata->>'source' = %s",
@@ -32,7 +30,6 @@ def _count_by_source(source: str) -> int:
 
 
 def _create_document(title: str, content: str, metadata: dict) -> None:
-    """Insert direto sem depender do service (mais leve para seed)."""
     with get_cursor() as cur:
         cur.execute(
             """
@@ -184,6 +181,63 @@ def seed_voice_tone():
     return count
 
 
+def seed_game_comments():
+    source = "game_comments"
+    filepath = SCRIPTS_DIR / "base_comentarios_jogos.json"
+
+    if not filepath.exists():
+        logger.warning(
+            "Arquivo não encontrado: %s — pulando comentários de jogos", filepath
+        )
+        return 0
+
+    existing = _count_by_source(source)
+    if existing > 0:
+        logger.info("Comentários de Jogos: %d registros já existem — pulando", existing)
+        return 0
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        dados = json.load(f)
+
+    count = 0
+    for item in dados:
+        try:
+            jogo = item.get("jogo", "")
+            nota = item.get("nota")
+            comentario = item.get("comentario", "")
+            data = item.get("data", "")
+
+            if not comentario or len(comentario.strip()) < 10:
+                continue
+
+            nota_str = f" | Nota: {nota}" if nota is not None else ""
+            title = f"{jogo}{nota_str} | {data}"
+
+            content = (
+                f"Game: {jogo}\n"
+                f"Rating: {nota if nota is not None else 'N/A'}\n"
+                f"Date: {data}\n"
+                f"Comment: {comentario}"
+            )
+
+            _create_document(
+                title=title,
+                content=content,
+                metadata={
+                    "source": source,
+                    "jogo": jogo,
+                    "nota": nota,
+                    "data": data,
+                },
+            )
+            count += 1
+        except Exception as e:
+            logger.error("Erro no comentário de %s: %s", item.get("jogo"), e)
+
+    logger.info("Comentários de Jogos: %d registros inseridos", count)
+    return count
+
+
 def main():
     logger.info("=" * 50)
     logger.info("SEED DE DADOS INICIAIS")
@@ -200,6 +254,7 @@ def main():
         total += seed_logistics()
         total += seed_tickets()
         total += seed_voice_tone()
+        total += seed_game_comments()
     except Exception as e:
         logger.error("Erro durante seed: %s", e)
         import traceback
