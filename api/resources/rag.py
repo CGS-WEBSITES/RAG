@@ -4,6 +4,7 @@ from api.services.rag_service import generate_rag_response
 
 ns = Namespace("rag", description="RAG - Perguntas e respostas com IA")
 
+
 _base_fields = {
     "question": fields.String(
         required=True,
@@ -49,6 +50,18 @@ rag_input_voice_tone = ns.model(
             default=3,
             description="Máximo de trechos de contexto (1-10)",
             example=3,
+        ),
+    },
+)
+
+rag_input_game_comments = ns.model(
+    "RAGInputGameComments",
+    {
+        **_base_fields,
+        "max_chunks": fields.Integer(
+            default=5,
+            description="Máximo de trechos de contexto (1-10)",
+            example=5,
         ),
     },
 )
@@ -120,3 +133,12 @@ class RAGVoiceTone(Resource):
     @ns.marshal_with(rag_output)
     def post(self):
         return _handle_rag(source="voice_tone", default_max_chunks=3)
+
+
+@ns.route("/game-comments")
+class RAGGameComments(Resource):
+    @ns.doc("rag_game_comments")
+    @ns.expect(rag_input_game_comments, validate=True)
+    @ns.marshal_with(rag_output)
+    def post(self):
+        return _handle_rag(source="game_comments", default_max_chunks=5)
