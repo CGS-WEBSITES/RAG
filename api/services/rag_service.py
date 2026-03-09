@@ -8,13 +8,17 @@ from api.services.search_service import semantic_search
 
 logger = logging.getLogger(__name__)
 
-MAX_CHUNK_LENGTH = 300
-RELEVANCE_THRESHOLD = 1.0
+# ---------------------------------------------------------------------------
+# Constantes de otimização
+# ---------------------------------------------------------------------------
+MAX_CHUNK_LENGTH = 500  # Truncar chunks longos para reduzir tokens do prompt
+RELEVANCE_THRESHOLD = 1.5  # Ignorar chunks com distância > este valor
 
 _client = None
 
 
 def _get_client() -> OpenAI:
+    """Lazy singleton do client OpenAI."""
     global _client
     if _client is None:
         if not Config.OPENAI_API_KEY:
@@ -24,10 +28,12 @@ def _get_client() -> OpenAI:
 
 
 def _filter_chunks(chunks: list[dict]) -> list[dict]:
+    """Remove chunks de baixa relevância."""
     return [c for c in chunks if c["distance"] < RELEVANCE_THRESHOLD]
 
 
 def _build_sources(chunks: list[dict]) -> list[dict]:
+    """Formata chunks como lista de sources para a resposta."""
     return [
         {
             "id": chunk["id"],
@@ -74,10 +80,16 @@ def generate_rag_response(
     context = "\n\n".join(context_parts)
 
     system_prompt = (
-        "You are a helpful assistant that answers questions based ONLY on the "
-        "documents provided. Be concise and direct. Cite document numbers when "
-        "relevant. If the answer is not in the documents, say: "
-        "'I could not find this information in the available documents.'"
+        "You are a helpful assistant that answers questions based on the "
+        "documents provided. Follow these rules:\n"
+        "1. Be concise and direct. Cite document numbers when relevant.\n"
+        "2. Synthesize information from the documents even if they don't "
+        "directly answer the question — extract useful insights when possible.\n"
+        "3. Only say you could not find information if the documents are truly "
+        "unrelated to the question.\n"
+        "4. Always respond in the same language as the question. "
+        "If the question is in Portuguese, respond in Portuguese. "
+        "If the question is in English, respond in English."
     )
 
     user_prompt = f"DOCUMENTS:\n{context}\n\n" f"QUESTION: {question}"
@@ -90,9 +102,9 @@ def generate_rag_response(
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            temperature=0.3,
+            temperature=0.7,
             top_p=0.9,
-            max_tokens=512,
+            max_tokens=1024,
         )
     except Exception as e:
         error_msg = str(e)
