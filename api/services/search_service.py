@@ -2,6 +2,7 @@ import logging
 from functools import lru_cache
 from typing import Any
 
+import requests
 from openai import OpenAI
 
 from api.config import Config
@@ -9,24 +10,30 @@ from api.database import get_cursor
 
 logger = logging.getLogger(__name__)
 
-_client = None
+_openai_client = None
 
 
-def _get_client() -> OpenAI:
-    global _client
-    if _client is None:
+def _get_openai_client() -> OpenAI:
+    """Lazy singleton do client OpenAI."""
+    global _openai_client
+    if _openai_client is None:
         if not Config.OPENAI_API_KEY:
             raise RuntimeError("OPENAI_API_KEY não configurada no .env")
-        _client = OpenAI(api_key=Config.OPENAI_API_KEY)
-    return _client
+        _openai_client = OpenAI(api_key=Config.OPENAI_API_KEY)
+    return _openai_client
+
+
+# ---------------------------------------------------------------------------
+# Embedding providers
+# ---------------------------------------------------------------------------
 
 
 def _openai_embed(text: str) -> list[float]:
-    client = _get_client()
-
+    """Gera embedding via OpenAI API."""
+    client = _get_openai_client()
     try:
         response = client.embeddings.create(
-            model=Config.EMBEDDING_MODEL,
+            model=Config.get_embedding_model(),
             input=text,
             dimensions=Config.EMBEDDING_DIMENSIONS,
         )
@@ -34,16 +41,45 @@ def _openai_embed(text: str) -> list[float]:
         raise RuntimeError(f"Erro ao gerar embedding via OpenAI: {e}") from e
 
     embedding = response.data[0].embedding
-
     if not isinstance(embedding, list) or not embedding:
         raise RuntimeError(f"Embedding inválido retornado: {response}")
-
     return embedding
 
 
+def _ollama_embed(text: str) -> list[float]:
+    """Gera embedding via Ollama local."""
+    url = f"{Config.OLLAMA_HOST.rstrip('/')}/api/embeddings"
+    payload = {"model": Config.get_embedding_model(), "prompt": text}
+
+    try:
+        resp = requests.post(url, json=payload, timeout=300)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        raise RuntimeError(f"Ollama indisponível em {Config.OLLAMA_HOST}: {e}") from e
+
+    data = resp.json()
+    embedding = data.get("embedding")
+    if not isinstance(embedding, list) or not embedding:
+        raise RuntimeError(f"Embedding inválido retornado: {data}")
+    return [float(x) for x in embedding]
+
+
+def _embed(text: str) -> list[float]:
+    """Gera embedding usando o provider configurado."""
+    if Config.is_openai():
+        return _openai_embed(text)
+    return _ollama_embed(text)
+
+
 @lru_cache(maxsize=256)
-def _openai_embed_cached(text: str) -> tuple[float, ...]:
-    return tuple(_openai_embed(text))
+def _embed_cached(text: str) -> tuple[float, ...]:
+    """Cache embeddings para queries repetidas."""
+    return tuple(_embed(text))
+
+
+# ---------------------------------------------------------------------------
+# Busca semântica
+# ---------------------------------------------------------------------------
 
 
 def semantic_search(
@@ -59,7 +95,7 @@ def semantic_search(
 
     limit = max(1, min(int(limit), 20))
 
-    query_embedding = list(_openai_embed_cached(query.lower()))
+    query_embedding = list(_embed_cached(query.lower()))
     vec_literal = "[" + ",".join(f"{x:.8f}" for x in query_embedding) + "]"
 
     source_filter = ""
