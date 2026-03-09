@@ -91,6 +91,7 @@ Resposta para o usuário
 | `POST /api/rag/logistics` | logistics | 1 |
 | `POST /api/rag/tickets` | tickets | 3 |
 | `POST /api/rag/voice-tone` | voice_tone | 3 |
+| `POST /api/rag/game-comments` | game_comments | 5 |
 
 ### Import
 
