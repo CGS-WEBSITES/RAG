@@ -36,8 +36,7 @@ services:
     image: timescale/pgai-vectorizer-worker:latest
     environment:
       PGAI_VECTORIZER_WORKER_DB_URL: postgres://postgres:postgres@db:5432/postgres
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
     command: ["--poll-interval", "5s"]
     depends_on:
       db:
@@ -54,9 +53,9 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
       EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-768}
       LLM_MODEL: ${LLM_MODEL:-}
     depends_on:

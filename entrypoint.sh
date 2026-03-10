@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 DB_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
-echo "==> Provider: ${LLM_PROVIDER:-openai}"
+echo "==> LLM Provider: ${LLM_PROVIDER:-openai}"
+echo "==> Embedding: OpenAI (sempre)"
 echo "==> Aguardando banco de dados..."
 until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -q; do
   sleep 2
@@ -11,13 +12,6 @@ python -m pgai install -d "$DB_URL" 2>/dev/null || echo "    pgai já instalado 
 echo "==> Criando tabelas..."
 python3 -m api.sql.setup_tables
 echo "==> Configurando vectorizer..."
-
-if [ "${LLM_PROVIDER:-openai}" = "ollama" ]; then
-  VECTORIZER_EMBEDDING="ai.embedding_ollama('${EMBEDDING_MODEL:-nomic-embed-text}', ${EMBEDDING_DIMENSIONS:-768})"
-else
-  VECTORIZER_EMBEDDING="ai.embedding_openai('${EMBEDDING_MODEL:-text-embedding-3-small}', ${EMBEDDING_DIMENSIONS:-768})"
-fi
-
 PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
 DO \$\$
 BEGIN
@@ -25,7 +19,10 @@ BEGIN
         PERFORM ai.create_vectorizer(
             'public.documents'::regclass,
             loading => ai.loading_column('content'),
-            embedding => ${VECTORIZER_EMBEDDING},
+            embedding => ai.embedding_openai(
+                '${EMBEDDING_MODEL:-text-embedding-3-small}',
+                ${EMBEDDING_DIMENSIONS:-768}
+            ),
             chunking => ai.chunking_recursive_character_text_splitter(
                 chunk_size => 800,
                 chunk_overlap => 400,

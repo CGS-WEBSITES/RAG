@@ -14,29 +14,17 @@ class Config:
     DB_USER: str = os.getenv("DB_USER", "postgres")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "postgres")
 
-    # Provider: "openai" ou "ollama"
-    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")
-
-    # OpenAI
+    # Embedding sempre OpenAI
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-
-    # Ollama
-    OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-
-    # Modelos (defaults mudam conforme provider)
-    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "")
+    EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
     EMBEDDING_DIMENSIONS: int = int(os.getenv("EMBEDDING_DIMENSIONS", "768"))
+
+    # LLM provider: "openai" ou "ollama"
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "openai")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "")
 
-    @classmethod
-    def get_embedding_model(cls) -> str:
-        if cls.EMBEDDING_MODEL:
-            return cls.EMBEDDING_MODEL
-        return (
-            "text-embedding-3-small"
-            if cls.LLM_PROVIDER == "openai"
-            else "nomic-embed-text"
-        )
+    # Ollama (só para LLM)
+    OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "http://ollama:11434")
 
     @classmethod
     def get_llm_model(cls) -> str:
@@ -45,7 +33,7 @@ class Config:
         return "gpt-4o-mini" if cls.LLM_PROVIDER == "openai" else "llama3.2"
 
     @classmethod
-    def is_openai(cls) -> bool:
+    def is_openai_llm(cls) -> bool:
         return cls.LLM_PROVIDER == "openai"
 
     @classmethod
