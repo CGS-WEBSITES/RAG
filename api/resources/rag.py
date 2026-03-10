@@ -4,62 +4,17 @@ from api.services.rag_service import generate_rag_response
 
 ns = Namespace("rag", description="RAG - Perguntas e respostas com IA")
 
-_base_fields = {
-    "question": fields.String(
-        required=True,
-        description="Pergunta em linguagem natural",
-        example="Qual o status atual do projeto?",
-    ),
-    "model": fields.String(
-        default="gpt-4o-mini",
-        description="Modelo LLM da OpenAI",
-        example="gpt-4o-mini",
-    ),
-}
-
-rag_input_logistics = ns.model(
-    "RAGInputLogistics",
+rag_input = ns.model(
+    "RAGInput",
     {
-        **_base_fields,
-        "max_chunks": fields.Integer(
-            default=1,
-            description="Máximo de trechos de contexto (1-10)",
-            example=1,
+        "question": fields.String(
+            required=True,
+            description="Pergunta em linguagem natural",
+            example="Meu pedido está atrasado, o que eu faço?",
         ),
-    },
-)
-
-rag_input_tickets = ns.model(
-    "RAGInputTickets",
-    {
-        **_base_fields,
         "max_chunks": fields.Integer(
             default=3,
-            description="Máximo de trechos de contexto (1-10)",
-            example=3,
-        ),
-    },
-)
-
-rag_input_voice_tone = ns.model(
-    "RAGInputVoiceTone",
-    {
-        **_base_fields,
-        "max_chunks": fields.Integer(
-            default=3,
-            description="Máximo de trechos de contexto (1-10)",
-            example=3,
-        ),
-    },
-)
-
-rag_input_game_comments = ns.model(
-    "RAGInputGameComments",
-    {
-        **_base_fields,
-        "max_chunks": fields.Integer(
-            default=3,
-            description="Máximo de trechos de contexto (1-10)",
+            description="Máximo de tickets de contexto (1-10)",
             example=3,
         ),
     },
@@ -86,58 +41,66 @@ rag_output = ns.model(
 )
 
 
-def _handle_rag(source: str, default_max_chunks: int = 3):
-    data = ns.payload
-    question = data["question"]
-    max_chunks = min(max(data.get("max_chunks", default_max_chunks), 1), 10)
-    model = data.get("model")
-
-    try:
-        return generate_rag_response(
-            question=question,
-            max_chunks=max_chunks,
-            model=model,
-            source=source,
-        )
-    except ConnectionError as e:
-        ns.abort(503, str(e))
-    except RuntimeError as e:
-        ns.abort(500, str(e))
-    except Exception as e:
-        ns.abort(500, f"Erro inesperado: {str(e)}")
-
-
-@ns.route("/logistics")
-class RAGLogistics(Resource):
-    @ns.doc("rag_logistics")
-    @ns.expect(rag_input_logistics, validate=True)
-    @ns.marshal_with(rag_output)
-    def post(self):
-        return _handle_rag(source="logistics", default_max_chunks=1)
-
-
 @ns.route("/tickets")
 class RAGTickets(Resource):
     @ns.doc("rag_tickets")
-    @ns.expect(rag_input_tickets, validate=True)
+    @ns.expect(rag_input, validate=True)
     @ns.marshal_with(rag_output)
     def post(self):
-        return _handle_rag(source="tickets", default_max_chunks=3)
+        data = ns.payload
+        question = data["question"]
+        max_chunks = min(max(data.get("max_chunks", 3), 1), 10)
+
+        try:
+            return generate_rag_response(
+                question=question,
+                max_chunks=max_chunks,
+            )
+        except ConnectionError as e:
+            ns.abort(503, str(e))
+        except RuntimeError as e:
+            ns.abort(500, str(e))
+        except Exception as e:
+            ns.abort(500, f"Erro inesperado: {str(e)}")
 
 
-@ns.route("/voice-tone")
-class RAGVoiceTone(Resource):
-    @ns.doc("rag_voice_tone")
-    @ns.expect(rag_input_voice_tone, validate=True)
-    @ns.marshal_with(rag_output)
-    def post(self):
-        return _handle_rag(source="voice_tone", default_max_chunks=3)
-
-
-@ns.route("/game-comments")
-class RAGGameComments(Resource):
-    @ns.doc("rag_game_comments")
-    @ns.expect(rag_input_game_comments, validate=True)
-    @ns.marshal_with(rag_output)
-    def post(self):
-        return _handle_rag(source="game_comments", default_max_chunks=3)
+# ============================================================
+# Game Comments (desabilitado)
+# ============================================================
+# _base_fields_game = {
+#     "question": fields.String(
+#         required=True,
+#         description="Pergunta sobre jogos",
+#         example="What do people think about Gloomhaven?",
+#     ),
+#     "max_chunks": fields.Integer(
+#         default=3,
+#         description="Máximo de trechos de contexto (1-10)",
+#         example=3,
+#     ),
+# }
+#
+# rag_input_game_comments = ns.model("RAGInputGameComments", _base_fields_game)
+#
+# @ns.route("/game-comments")
+# class RAGGameComments(Resource):
+#     @ns.doc("rag_game_comments")
+#     @ns.expect(rag_input_game_comments, validate=True)
+#     @ns.marshal_with(rag_output)
+#     def post(self):
+#         """RAG sobre comentários e avaliações de jogos"""
+#         data = ns.payload
+#         question = data["question"]
+#         max_chunks = min(max(data.get("max_chunks", 3), 1), 10)
+#         try:
+#             return generate_rag_response(
+#                 question=question,
+#                 max_chunks=max_chunks,
+#                 source="game_comments",
+#             )
+#         except ConnectionError as e:
+#             ns.abort(503, str(e))
+#         except RuntimeError as e:
+#             ns.abort(500, str(e))
+#         except Exception as e:
+#             ns.abort(500, f"Erro inesperado: {str(e)}")
