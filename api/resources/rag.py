@@ -4,6 +4,8 @@ from api.services.rag_service import generate_rag_response
 
 ns = Namespace("rag", description="RAG - Perguntas e respostas com IA")
 
+# --- Modelos de entrada ---
+
 rag_input = ns.model(
     "RAGInput",
     {
@@ -13,20 +15,40 @@ rag_input = ns.model(
             example="Meu pedido está atrasado, o que eu faço?",
         ),
         "max_chunks": fields.Integer(
-            default=3,
+            default=5,
             description="Máximo de tickets de contexto (1-10)",
-            example=3,
+            example=5,
         ),
     },
 )
 
-source_model = ns.model(
-    "Source",
+# --- Modelos de saída ---
+
+ticket_source = ns.model(
+    "TicketSource",
     {
-        "id": fields.Integer(description="ID do documento fonte"),
-        "title": fields.String(description="Título do documento"),
-        "chunk": fields.String(description="Trecho usado como contexto"),
-        "distance": fields.Float(description="Distância semântica"),
+        "id": fields.Integer,
+        "title": fields.String,
+        "chunk": fields.String,
+        "distance": fields.Float,
+    },
+)
+
+logistics_source = ns.model(
+    "LogisticsSource",
+    {
+        "id": fields.Integer,
+        "title": fields.String,
+        "chunk": fields.String,
+        "distance": fields.Float,
+    },
+)
+
+sources_model = ns.model(
+    "Sources",
+    {
+        "tickets": fields.List(fields.Nested(ticket_source)),
+        "logistics": fields.List(fields.Nested(logistics_source)),
     },
 )
 
@@ -35,7 +57,7 @@ rag_output = ns.model(
     {
         "question": fields.String(description="Pergunta original"),
         "answer": fields.String(description="Resposta gerada pelo LLM"),
-        "sources": fields.List(fields.Nested(source_model)),
+        "sources": fields.Nested(sources_model),
         "model": fields.String(description="Modelo LLM utilizado"),
     },
 )
@@ -47,6 +69,7 @@ class RAGTickets(Resource):
     @ns.expect(rag_input, validate=True)
     @ns.marshal_with(rag_output)
     def post(self):
+        """RAG unificado — busca em tickets, logística e tom de voz"""
         data = ns.payload
         question = data["question"]
         max_chunks = min(max(data.get("max_chunks", 3), 1), 10)
@@ -62,45 +85,3 @@ class RAGTickets(Resource):
             ns.abort(500, str(e))
         except Exception as e:
             ns.abort(500, f"Erro inesperado: {str(e)}")
-
-
-# ============================================================
-# Game Comments (desabilitado)
-# ============================================================
-# _base_fields_game = {
-#     "question": fields.String(
-#         required=True,
-#         description="Pergunta sobre jogos",
-#         example="What do people think about Gloomhaven?",
-#     ),
-#     "max_chunks": fields.Integer(
-#         default=3,
-#         description="Máximo de trechos de contexto (1-10)",
-#         example=3,
-#     ),
-# }
-#
-# rag_input_game_comments = ns.model("RAGInputGameComments", _base_fields_game)
-#
-# @ns.route("/game-comments")
-# class RAGGameComments(Resource):
-#     @ns.doc("rag_game_comments")
-#     @ns.expect(rag_input_game_comments, validate=True)
-#     @ns.marshal_with(rag_output)
-#     def post(self):
-#         """RAG sobre comentários e avaliações de jogos"""
-#         data = ns.payload
-#         question = data["question"]
-#         max_chunks = min(max(data.get("max_chunks", 3), 1), 10)
-#         try:
-#             return generate_rag_response(
-#                 question=question,
-#                 max_chunks=max_chunks,
-#                 source="game_comments",
-#             )
-#         except ConnectionError as e:
-#             ns.abort(503, str(e))
-#         except RuntimeError as e:
-#             ns.abort(500, str(e))
-#         except Exception as e:
-#             ns.abort(500, f"Erro inesperado: {str(e)}")
