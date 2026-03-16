@@ -1,6 +1,7 @@
+from flask import Response, request
 from flask_restx import Namespace, Resource, fields
 
-from api.services.rag_service import generate_rag_response
+from api.services.rag_service import generate_rag_response, generate_rag_stream
 
 ns = Namespace("rag", description="RAG - Perguntas e respostas com IA")
 
@@ -16,6 +17,10 @@ rag_input = ns.model(
             default=5,
             description="Máximo de tickets de contexto (1-10)",
             example=5,
+        ),
+        "session_id": fields.String(
+            default="",
+            description="ID da sessão para histórico",
         ),
     },
 )
@@ -55,6 +60,8 @@ rag_output = ns.model(
         "answer": fields.String(description="Resposta gerada pelo LLM"),
         "sources": fields.Nested(sources_model),
         "model": fields.String(description="Modelo LLM utilizado"),
+        "category": fields.String(description="Classificação automática"),
+        "chat_id": fields.Integer(description="ID no histórico"),
     },
 )
 
@@ -67,12 +74,14 @@ class RAGTickets(Resource):
     def post(self):
         data = ns.payload
         question = data["question"]
-        max_chunks = min(max(data.get("max_chunks", 3), 1), 10)
+        max_chunks = min(max(data.get("max_chunks", 5), 1), 10)
+        session_id = data.get("session_id", "")
 
         try:
             return generate_rag_response(
                 question=question,
                 max_chunks=max_chunks,
+                session_id=session_id,
             )
         except ConnectionError as e:
             ns.abort(503, str(e))
@@ -80,3 +89,29 @@ class RAGTickets(Resource):
             ns.abort(500, str(e))
         except Exception as e:
             ns.abort(500, f"Erro inesperado: {str(e)}")
+
+
+@ns.route("/tickets/stream")
+class RAGTicketsStream(Resource):
+    @ns.doc("rag_tickets_stream")
+    def post(self):
+        data = request.get_json(force=True)
+        question = (data.get("question") or "").strip()
+        if not question:
+            return {"message": "question is required"}, 400
+
+        max_chunks = min(max(data.get("max_chunks", 5), 1), 10)
+        session_id = data.get("session_id", "")
+
+        return Response(
+            generate_rag_stream(
+                question=question,
+                max_chunks=max_chunks,
+                session_id=session_id,
+            ),
+            mimetype="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
