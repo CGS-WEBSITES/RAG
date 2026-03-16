@@ -1,4 +1,3 @@
--- Extensões necessárias
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS ai CASCADE;
 
@@ -64,3 +63,23 @@ CREATE TABLE IF NOT EXISTS conhecimento_ips (
 CREATE INDEX IF NOT EXISTS idx_conhecimento_ip ON conhecimento_ips(ip_nome);
 CREATE INDEX IF NOT EXISTS idx_conhecimento_categoria ON conhecimento_ips(categoria);
 CREATE INDEX IF NOT EXISTS idx_conhecimento_embedding ON conhecimento_ips USING ivfflat (embedding vector_cosine_ops);
+
+-- Histórico de conversas do RAG
+CREATE TABLE IF NOT EXISTS chat_history (
+    id SERIAL PRIMARY KEY,
+    session_id VARCHAR(100) NOT NULL,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    category VARCHAR(100),
+    model VARCHAR(100),
+    provider VARCHAR(50),
+    tokens_in INTEGER DEFAULT 0,
+    tokens_out INTEGER DEFAULT 0,
+    sources_count INTEGER DEFAULT 0,
+    feedback VARCHAR(10),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_chat_history_session ON chat_history(session_id);
+CREATE INDEX IF NOT EXISTS idx_chat_history_category ON chat_history(category);
+CREATE INDEX IF NOT EXISTS idx_chat_history_created ON chat_history(created_at DESC);

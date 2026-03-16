@@ -1,9 +1,11 @@
 #!/bin/bash
 set -e
 DB_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+echo "==> LLM Provider: ${LLM_PROVIDER:-openai}"
+echo "==> Embedding: OpenAI (sempre)"
 echo "==> Aguardando banco de dados..."
 until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -q; do
-  sleep 2
+    sleep 2
 done
 echo "==> Instalando pgai..."
 python -m pgai install -d "$DB_URL" 2>/dev/null || echo "    pgai já instalado ou não disponível, continuando..."
@@ -18,7 +20,7 @@ BEGIN
             'public.documents'::regclass,
             loading => ai.loading_column('content'),
             embedding => ai.embedding_openai(
-                'text-embedding-3-small',
+                '${EMBEDDING_MODEL:-text-embedding-3-small}',
                 ${EMBEDDING_DIMENSIONS:-768}
             ),
             chunking => ai.chunking_recursive_character_text_splitter(

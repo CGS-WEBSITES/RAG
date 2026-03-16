@@ -23,7 +23,6 @@ def _get_client() -> OpenAI:
 
 def _openai_embed(text: str) -> list[float]:
     client = _get_client()
-
     try:
         response = client.embeddings.create(
             model=Config.EMBEDDING_MODEL,
@@ -34,16 +33,35 @@ def _openai_embed(text: str) -> list[float]:
         raise RuntimeError(f"Erro ao gerar embedding via OpenAI: {e}") from e
 
     embedding = response.data[0].embedding
-
     if not isinstance(embedding, list) or not embedding:
         raise RuntimeError(f"Embedding inválido retornado: {response}")
-
     return embedding
 
 
 @lru_cache(maxsize=256)
-def _openai_embed_cached(text: str) -> tuple[float, ...]:
+def _embed_cached(text: str) -> tuple[float, ...]:
     return tuple(_openai_embed(text))
+
+
+def get_all_by_source(source: str) -> list[dict[str, Any]]:
+    sql = """
+        SELECT id, title, content
+        FROM public.documents
+        WHERE metadata->>'source' = %s
+        ORDER BY id
+    """
+    with get_cursor() as cur:
+        cur.execute(sql, (source,))
+        rows = cur.fetchall()
+
+    return [
+        {
+            "id": row["id"],
+            "title": row["title"],
+            "content": row["content"],
+        }
+        for row in rows
+    ]
 
 
 def semantic_search(
@@ -59,7 +77,7 @@ def semantic_search(
 
     limit = max(1, min(int(limit), 20))
 
-    query_embedding = list(_openai_embed_cached(query.lower()))
+    query_embedding = list(_embed_cached(query.lower()))
     vec_literal = "[" + ",".join(f"{x:.8f}" for x in query_embedding) + "]"
 
     source_filter = ""
