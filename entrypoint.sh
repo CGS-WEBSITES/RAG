@@ -5,7 +5,7 @@ echo "==> LLM Provider: ${LLM_PROVIDER:-openai}"
 echo "==> Embedding: OpenAI (sempre)"
 echo "==> Aguardando banco de dados..."
 until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -q; do
-  sleep 2
+    sleep 2
 done
 echo "==> Instalando pgai..."
 python -m pgai install -d "$DB_URL" 2>/dev/null || echo "    pgai já instalado ou não disponível, continuando..."

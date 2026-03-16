@@ -13,7 +13,6 @@ _client = None
 
 
 def _get_client() -> OpenAI:
-    """Lazy singleton do client OpenAI."""
     global _client
     if _client is None:
         if not Config.OPENAI_API_KEY:
@@ -23,7 +22,6 @@ def _get_client() -> OpenAI:
 
 
 def _openai_embed(text: str) -> list[float]:
-    """Gera embedding via OpenAI API."""
     client = _get_client()
     try:
         response = client.embeddings.create(
@@ -42,12 +40,10 @@ def _openai_embed(text: str) -> list[float]:
 
 @lru_cache(maxsize=256)
 def _embed_cached(text: str) -> tuple[float, ...]:
-    """Cache embeddings para queries repetidas."""
     return tuple(_openai_embed(text))
 
 
 def get_all_by_source(source: str) -> list[dict[str, Any]]:
-    """Retorna todos os documentos de um source (sem busca semântica)."""
     sql = """
         SELECT id, title, content
         FROM public.documents

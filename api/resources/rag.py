@@ -4,8 +4,6 @@ from api.services.rag_service import generate_rag_response
 
 ns = Namespace("rag", description="RAG - Perguntas e respostas com IA")
 
-# --- Modelos de entrada ---
-
 rag_input = ns.model(
     "RAGInput",
     {
@@ -21,8 +19,6 @@ rag_input = ns.model(
         ),
     },
 )
-
-# --- Modelos de saída ---
 
 ticket_source = ns.model(
     "TicketSource",
@@ -69,7 +65,6 @@ class RAGTickets(Resource):
     @ns.expect(rag_input, validate=True)
     @ns.marshal_with(rag_output)
     def post(self):
-        """RAG unificado — busca em tickets, logística e tom de voz"""
         data = ns.payload
         question = data["question"]
         max_chunks = min(max(data.get("max_chunks", 3), 1), 10)

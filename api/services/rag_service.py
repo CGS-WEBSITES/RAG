@@ -10,9 +10,6 @@ from api.services.search_service import semantic_search, get_all_by_source
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constantes de otimização
-# ---------------------------------------------------------------------------
 MAX_CHUNK_LENGTH = 500
 RELEVANCE_THRESHOLD = 1.5
 
@@ -44,46 +41,29 @@ def _build_sources(chunks: list[dict]) -> list[dict]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Filtro de dados sensíveis
-# ---------------------------------------------------------------------------
-
-
 def _sanitize_text(text: str) -> str:
-    """Remove dados sensíveis do texto antes de enviar ao LLM e exibir ao usuário."""
-    # HTML tags residuais
     text = re.sub(r"<[^>]+>", "", text)
 
-    # URLs
     text = re.sub(r"https?://[^\s\)]+", "[URL]", text)
 
-    # Emails
     text = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "[EMAIL]", text)
 
-    # IPs
     text = re.sub(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", "[IP]", text)
 
-    # Order IDs / ticket IDs (Crowdox, Freshworks, etc)
     text = re.sub(
         r"(?:Order\s*ID\s*#?\s*|Crowdox\s*Order\s*ID\s*#?\s*)\d+", "[ORDER_ID]", text
     )
     text = re.sub(r"#\d{5,}", "[TICKET_ID]", text)
 
-    # CPF / CNPJ
     text = re.sub(r"\b\d{3}\.\d{3}\.\d{3}[-]\d{2}\b", "[CPF]", text)
     text = re.sub(r"\b\d{2}\.\d{3}\.\d{3}/\d{4}[-]\d{2}\b", "[CNPJ]", text)
 
-    # Postal codes
     text = re.sub(r"\b[A-Z]{1,2}\d{1,2}\s?\d[A-Z]{2}\b", "[POSTAL_CODE]", text)  # UK
     text = re.sub(r"\b\d{5}[-]?\d{3}\b", "[CEP]", text)  # Brasil
     text = re.sub(r"\b\d{5}\b(?=\s*(?:USA|US|United States))", "[ZIP]", text)  # USA
 
-    # Telefones
     text = re.sub(r"[\+]?\d[\d\s\-\(\)]{8,}\d", "[PHONE]", text)
 
-    # --- NOMES ---
-
-    # Nomes após saudações (pt + en) — inclui variações com vírgula, ponto, dois pontos
     text = re.sub(
         r"(?:Hi|Hello|Dear|Thanks|Thank you|Regards|Best regards|Kind regards|"
         r"Obrigado|Olá|Prezado|Caro|Att|Atenciosamente|Oi|OI|oi)\s*[,;.:!]?\s*"
@@ -92,7 +72,6 @@ def _sanitize_text(text: str) -> str:
         text,
     )
 
-    # Nomes após "---" (separadores de thread de email) seguidos de nome
     text = re.sub(
         r"(?:^---\s*\n\s*)([A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,3})",
         lambda m: m.group(0).replace(m.group(1), "[NOME]"),
@@ -100,7 +79,6 @@ def _sanitize_text(text: str) -> str:
         flags=re.MULTILINE,
     )
 
-    # "raised by Fulano (email)" ou "raised by Fulano"
     text = re.sub(
         r"raised by\s+[A-Za-zÀ-ü\s]+\s*\([^)]*\)", "raised by [REMETENTE]", text
     )
@@ -110,7 +88,6 @@ def _sanitize_text(text: str) -> str:
         text,
     )
 
-    # Nomes completos isolados em linhas (assinaturas) — 1 ou 2 nomes
     text = re.sub(
         r"^([A-ZÀ-Ü][a-zà-ü]{1,20}(?:\s+[A-ZÀ-Ü][a-zà-ü]{1,20}){0,3})\s*$",
         "[NOME]",
@@ -118,7 +95,6 @@ def _sanitize_text(text: str) -> str:
         flags=re.MULTILINE,
     )
 
-    # Nomes antes de cargos (SALES EXECUTIVE, Customer Service, etc)
     text = re.sub(
         r"([A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2})\s+"
         r"(?:SALES|Sales|EXECUTIVE|Executive|MANAGER|Manager|SUPPORT|Support|"
@@ -127,16 +103,12 @@ def _sanitize_text(text: str) -> str:
         text,
     )
 
-    # Att; / Att. / Att, seguido de nome
     text = re.sub(
         r"(?:Att|ATT)\s*[;.,:]?\s*([A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2})",
         lambda m: m.group(0).replace(m.group(1), "[NOME]"),
         text,
     )
 
-    # --- FIM NOMES ---
-
-    # Citações de emails anteriores
     text = re.sub(
         r"(?:Em|On)\s+\d{4}-\d{2}-\d{2}.*?escreveu:", "[EMAIL_ANTERIOR]", text
     )
@@ -146,7 +118,6 @@ def _sanitize_text(text: str) -> str:
         text,
     )
 
-    # Endereços (número + rua, pt + en)
     text = re.sub(
         r"\d+\s+[A-Z][a-z]+(?:\s+[A-Z]?[a-z]+)*\s+"
         r"(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Park|Blvd|Way|Rua|Avenida|Av)\b",
@@ -154,7 +125,6 @@ def _sanitize_text(text: str) -> str:
         text,
     )
 
-    # Campos de observação
     text = re.sub(
         r"(?:Observa[çc][õo]es?|Notes?|Obs|Nota|Observation|Remark|Observação)\s*:\s*[^\n]+",
         "[REDACTED]",
@@ -162,7 +132,6 @@ def _sanitize_text(text: str) -> str:
         flags=re.IGNORECASE,
     )
 
-    # PayPal references
     text = re.sub(
         r"(?:PayPal|Paypal)\s+(?:you|me|us)\b",
         "enviar pagamento",
@@ -170,10 +139,8 @@ def _sanitize_text(text: str) -> str:
         flags=re.IGNORECASE,
     )
 
-    # Facebook IDs e identificadores numéricos longos
     text = re.sub(r"\b\d{10,}\b", "[ID]", text)
 
-    # Blocos de assinatura corporativa (linhas com ---- seguidas de disclaimer)
     text = re.sub(
         r"-{5,}.*?(?:Due to high volume|contents of this email|confidential).*?(?:\n|$)",
         "[ASSINATURA_CORPORATIVA]",
@@ -184,11 +151,6 @@ def _sanitize_text(text: str) -> str:
     return text
 
     return text
-
-
-# ---------------------------------------------------------------------------
-# LLM providers
-# ---------------------------------------------------------------------------
 
 
 def _openai_generate(model: str, system_prompt: str, user_prompt: str) -> dict:
@@ -251,11 +213,6 @@ def _ollama_generate(model: str, system_prompt: str, user_prompt: str) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# RAG principal — endpoint unificado
-# ---------------------------------------------------------------------------
-
-
 def generate_rag_response(
     question: str,
     max_chunks: int = 5,
@@ -268,15 +225,12 @@ def generate_rag_response(
     else:
         model = Config.get_llm_model()
 
-    # 1. Tickets relevantes (base principal)
     ticket_chunks = semantic_search(question, limit=max_chunks, source="tickets")
     ticket_chunks = _filter_chunks(ticket_chunks)
 
-    # 2. Logística relevante (1 resultado)
     logistics_chunks = semantic_search(question, limit=1, source="logistics")
     logistics_chunks = _filter_chunks(logistics_chunks)
 
-    # 3. Tom de voz completo
     voice_tone_docs = get_all_by_source("voice_tone")
 
     if not ticket_chunks and not logistics_chunks:
@@ -286,8 +240,6 @@ def generate_rag_response(
             "sources": {"tickets": [], "logistics": [], "voice_tone": []},
             "model": model,
         }
-
-    # --- Montar contexto para o LLM ---
 
     voice_tone_text = "\n".join(
         f"- {doc['title']}: {doc['content']}" for doc in voice_tone_docs
@@ -349,8 +301,6 @@ def generate_rag_response(
         raise RuntimeError(
             f"Erro ao gerar resposta via {Config.LLM_PROVIDER}: {error_msg}"
         )
-
-    # --- Montar resposta com sources separadas ---
 
     sanitized_tickets = [
         {
