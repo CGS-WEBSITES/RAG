@@ -11,6 +11,7 @@ from api.config import Config
 from api.database import init_pool
 from api.resources.rag import ns as rag_ns
 from api.resources.imports import ns as imports_ns
+from api.resources.history import ns as history_ns
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,18 +30,20 @@ def create_app() -> Flask:
     api = Api(
         app,
         title="RAG API",
-        version="1.0",
+        version="2.0",
         description=(
-            "API de busca semântica e RAG com pgai + Ollama.\n\n"
-            f"**Embedding Model:** {Config.EMBEDDING_MODEL} "
+            "API de suporte CGS com RAG multi-source.\n\n"
+            f"**Provider:** {Config.LLM_PROVIDER}\n\n"
+            f"**Embedding:** {Config.EMBEDDING_MODEL} "
             f"({Config.EMBEDDING_DIMENSIONS}d)\n\n"
-            f"**LLM Model:** {Config.LLM_MODEL}\n\n"
+            f"**LLM:** {Config.get_llm_model()}\n\n"
         ),
         doc="/docs",
     )
 
     api.add_namespace(rag_ns, path="/api/rag")
     api.add_namespace(imports_ns, path="/api/import")
+    api.add_namespace(history_ns, path="/api/history")
 
     with app.app_context():
         try:
