@@ -4,6 +4,7 @@ from pathlib import Path
 
 from flask import Flask
 from flask_restx import Api
+from flask_cors import CORS
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -26,6 +27,12 @@ def create_app() -> Flask:
     app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
     app.config["TIMEOUT"] = 600
+
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": "*"}},
+        supports_credentials=False,
+    )
 
     api = Api(
         app,
