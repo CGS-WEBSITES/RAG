@@ -96,7 +96,118 @@ def classify_question(question: str) -> str:
         return "outro"
 
 
+CONTEXT_ANALYSIS_PROMPT = """You are a context analyzer for a customer support system of Creative Games Studio (CGS), a board game company.
+
+CGS has multiple board game projects shipped to different regions worldwide.
+
+Analyze the user's question AND the conversation history to determine if you have enough context to give a precise answer.
+
+You MUST respond in valid JSON only, no markdown, no backticks:
+
+If context is SUFFICIENT:
+{"status": "ready", "project": "detected project or null", "region": "detected region or null", "enhanced_query": "the question enriched with context from history"}
+
+If context is MISSING:
+{"status": "need_info", "missing": ["list of what's missing"], "follow_up": "a friendly question in the SAME LANGUAGE as the user asking for the missing info"}
+
+CRITICAL RULES FOR CLASSIFICATION:
+
+PERSONAL questions (status: "need_info" if project/region unknown):
+These contain possessive pronouns or refer to a specific person's situation:
+- "meu pedido", "minha entrega", "meu reembolso", "meu rastreamento"
+- "my order", "my delivery", "my refund", "my tracking"
+- "como está minha entrega?", "meu pedido está atrasado"
+- "where is my order?", "what's the status of my delivery?"
+- "quero trocar meu endereço", "quero cancelar meu pedido"
+- Any question with "meu/minha/my" + order/delivery/shipment/pedido/entrega
+- Any question asking about a SPECIFIC order status, tracking, or shipment
+These ALWAYS need project AND region. If EITHER is missing, set status to "need_info".
+
+GENERIC questions (status: "ready", no project/region needed):
+These ask about policies, processes, or how to handle situations in general:
+- "como funciona o reembolso?", "qual a política de troca?"
+- "how does refund work?", "what's the return policy?"
+- "como responder reclamações de atraso?"
+- "o que fazer quando um cliente reclama de defeito?"
+- Any question about CGS policies, processes, or general guidance
+
+OTHER RULES:
+- If the conversation history already contains project/region info, extract it and set status to "ready".
+- The follow_up question must be concise, friendly, and list available options.
+- Always respond in the same language as the user's question.
+- Available projects: Drunagor, Dante, ForFun, Oathfall, Magnus, Frosthaven.
+- Available regions: Brasil, Europa, EUA, Ásia, Oceania.
+- When in doubt between personal and generic, choose "need_info" — it's better to ask than to guess wrong."""
+
+
+def analyze_context(question: str, chat_history: list[dict] | None = None) -> dict:
+    history_text = ""
+    if chat_history:
+        history_parts = []
+        for msg in chat_history[-6:]:
+            role = "User" if msg.get("role") == "user" else "Assistant"
+            history_parts.append(f"{role}: {msg.get('content', '')}")
+        history_text = "\n".join(history_parts)
+
+    user_content = (
+        f"CONVERSATION HISTORY:\n{history_text}\n\nCURRENT QUESTION: {question}"
+        if history_text
+        else f"CURRENT QUESTION: {question}"
+    )
+
+    try:
+        if Config.is_openai_llm():
+            client = _get_openai_client()
+            response = client.chat.completions.create(
+                model=Config.get_llm_model(),
+                messages=[
+                    {"role": "system", "content": CONTEXT_ANALYSIS_PROMPT},
+                    {"role": "user", "content": user_content},
+                ],
+                temperature=0,
+                max_tokens=200,
+                response_format={"type": "json_object"},
+            )
+            result_text = response.choices[0].message.content.strip()
+        else:
+            resp = requests.post(
+                f"{Config.OLLAMA_HOST.rstrip('/')}/api/chat",
+                json={
+                    "model": Config.get_llm_model(),
+                    "messages": [
+                        {"role": "system", "content": CONTEXT_ANALYSIS_PROMPT},
+                        {"role": "user", "content": user_content},
+                    ],
+                    "stream": False,
+                    "format": "json",
+                    "options": {"temperature": 0, "num_predict": 200},
+                },
+                timeout=30,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            result_text = data.get("message", {}).get("content", "{}").strip()
+
+        result = json.loads(result_text)
+        logger.info(
+            "Context analysis: status=%s, question='%s'",
+            result.get("status"),
+            question[:50],
+        )
+        return result
+
+    except Exception as e:
+        logger.warning("Context analysis failed: %s — proceeding with ready", e)
+        return {
+            "status": "ready",
+            "project": None,
+            "region": None,
+            "enhanced_query": question,
+        }
+
+
 def _sanitize_text(text: str) -> str:
+    """Remove dados sensíveis do texto."""
     text = re.sub(r"<[^>]+>", "", text)
     text = re.sub(r"https?://[^\s\)]+", "[URL]", text)
     text = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "[EMAIL]", text)
@@ -130,7 +241,6 @@ def _sanitize_text(text: str) -> str:
     text = re.sub(
         r"raised by\s+[A-Za-zÀ-ü\s]+\s*\([^)]*\)", "raised by [REMETENTE]", text
     )
-
     text = re.sub(
         r"raised by\s+[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+)*",
         "raised by [REMETENTE]",
@@ -199,17 +309,45 @@ def _sanitize_text(text: str) -> str:
     return text
 
 
-def _prepare_rag_context(question: str, max_chunks: int = 5) -> dict:
-    if Config.is_openai_llm():
-        model = Config.get_llm_model()
-    else:
-        model = Config.get_llm_model()
+def _prepare_rag_context(
+    question: str,
+    max_chunks: int = 5,
+    project: str | None = None,
+    region: str | None = None,
+) -> dict:
+    model = Config.get_llm_model()
 
     ticket_chunks = semantic_search(question, limit=max_chunks, source="tickets")
     ticket_chunks = _filter_chunks(ticket_chunks)
 
-    logistics_chunks = semantic_search(question, limit=1, source="logistics")
+    logistics_limit = 3 if project or region else 1
+    logistics_chunks = semantic_search(
+        question, limit=logistics_limit, source="logistics"
+    )
     logistics_chunks = _filter_chunks(logistics_chunks)
+
+    if project and logistics_chunks:
+        filtered = [
+            c
+            for c in logistics_chunks
+            if project.lower() in c.get("title", "").lower()
+            or project.lower() in c.get("chunk", "").lower()
+        ]
+        if filtered:
+            logistics_chunks = filtered
+
+    if region and logistics_chunks:
+        filtered = [
+            c
+            for c in logistics_chunks
+            if region.lower() in c.get("title", "").lower()
+            or region.lower() in c.get("chunk", "").lower()
+        ]
+        if filtered:
+            logistics_chunks = filtered
+
+    if len(logistics_chunks) > 1:
+        logistics_chunks = logistics_chunks[:1]
 
     voice_tone_docs = get_all_by_source("voice_tone")
 
@@ -235,6 +373,12 @@ def _prepare_rag_context(question: str, max_chunks: int = 5) -> dict:
 
     context = "\n\n".join(context_parts)
 
+    context_hint = ""
+    if project:
+        context_hint += f"\nThe user is asking about project: {project}."
+    if region:
+        context_hint += f"\nThe user is in region: {region}."
+
     system_prompt = (
         "You are a customer support assistant for Creative Games Studio (CGS), "
         "a board game company. Follow these rules strictly:\n\n"
@@ -244,7 +388,8 @@ def _prepare_rag_context(question: str, max_chunks: int = 5) -> dict:
         "1. The tickets provided are EXAMPLES of past support conversations. "
         "Use them as reference to craft a helpful response.\n"
         "2. Use the voice tone guidelines to shape HOW you respond.\n"
-        "3. The logistics data shows current shipping status. Reference it if relevant.\n"
+        "3. The logistics data shows current shipping status. Reference it ONLY if it matches "
+        "the user's project and region. Do NOT mix data from different projects or regions.\n"
         "4. Be concise, direct and helpful. Go straight to the answer.\n"
         "5. NEVER include personal data in your response: no names (real or fictional), "
         "no emails, no addresses, no order IDs, no phone numbers. "
@@ -255,6 +400,7 @@ def _prepare_rag_context(question: str, max_chunks: int = 5) -> dict:
         "7. Always respond in the same language as the question.\n"
         "8. If no relevant info is found, just say you couldn't find the information "
         "and suggest contacting support at customerservice@wearecgs.com."
+        f"{context_hint}"
     )
 
     user_prompt = f"DOCUMENTS:\n{context}\n\nQUESTION: {question}"
@@ -284,117 +430,52 @@ def _prepare_rag_context(question: str, max_chunks: int = 5) -> dict:
     }
 
 
-def generate_rag_response(
-    question: str,
-    max_chunks: int = 5,
-    session_id: str = "",
-) -> dict[str, Any]:
-    ctx = _prepare_rag_context(question, max_chunks)
-
-    if ctx.get("empty"):
-        return {
-            "question": question,
-            "answer": "Não encontrei documentos relevantes na base de conhecimento.",
-            "sources": {"tickets": [], "logistics": []},
-            "model": ctx["model"],
-            "category": "outro",
-        }
-
-    model = ctx["model"]
-
-    try:
-        if Config.is_openai_llm():
-            client = _get_openai_client()
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": ctx["system_prompt"]},
-                    {"role": "user", "content": ctx["user_prompt"]},
-                ],
-                temperature=0.7,
-                top_p=0.9,
-                max_tokens=1024,
-            )
-            answer = response.choices[0].message.content.strip()
-            tokens_in = response.usage.prompt_tokens
-            tokens_out = response.usage.completion_tokens
-        else:
-            resp = requests.post(
-                f"{Config.OLLAMA_HOST.rstrip('/')}/api/chat",
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": ctx["system_prompt"]},
-                        {"role": "user", "content": ctx["user_prompt"]},
-                    ],
-                    "stream": False,
-                    "options": {
-                        "temperature": 0.7,
-                        "top_p": 0.9,
-                        "num_predict": 1024,
-                        "num_ctx": 4096,
-                    },
-                },
-                timeout=300,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            answer = data.get("message", {}).get("content", "").strip()
-            tokens_in = data.get("prompt_eval_count", 0)
-            tokens_out = data.get("eval_count", 0)
-    except Exception as e:
-        raise RuntimeError(f"Erro ao gerar resposta via {Config.LLM_PROVIDER}: {e}")
-
-    category = classify_question(question)
-
-    chat_id = 0
-    if session_id:
-        try:
-            chat_id = save_chat(
-                session_id=session_id,
-                question=question,
-                answer=answer,
-                category=category,
-                model=model,
-                provider=Config.LLM_PROVIDER,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-                sources_count=len(ctx["ticket_chunks"]) + len(ctx["logistics_chunks"]),
-            )
-        except Exception as e:
-            logger.warning("Failed to save chat history: %s", e)
-
-    logger.info(
-        "RAG completed: provider=%s, question='%s', category=%s, tickets=%d, "
-        "logistics=%d, model=%s, tokens_in=%d, tokens_out=%d",
-        Config.LLM_PROVIDER,
-        question[:50],
-        category,
-        len(ctx["ticket_chunks"]),
-        len(ctx["logistics_chunks"]),
-        model,
-        tokens_in,
-        tokens_out,
-    )
-
-    return {
-        "question": question,
-        "answer": answer,
-        "sources": ctx["sources"],
-        "model": model,
-        "category": category,
-        "chat_id": chat_id,
-    }
-
-
 def generate_rag_stream(
     question: str,
     max_chunks: int = 5,
     session_id: str = "",
+    chat_history: list[dict] | None = None,
 ) -> Generator[str, None, None]:
-    ctx = _prepare_rag_context(question, max_chunks)
-    model = ctx.get("model", Config.get_llm_model())
+    model = Config.get_llm_model()
+
+    analysis = analyze_context(question, chat_history)
+
+    if analysis.get("status") == "need_info":
+        follow_up = analysis.get("follow_up", "Poderia me dar mais detalhes?")
+        category = classify_question(question)
+
+        yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'need_info': True})}\n\n"
+        for word in follow_up.split(" "):
+            yield f"data: {json.dumps({'type': 'token', 'content': word + ' '})}\n\n"
+
+        chat_id = 0
+        if session_id:
+            try:
+                chat_id = save_chat(
+                    session_id=session_id,
+                    question=question,
+                    answer=follow_up,
+                    category=category,
+                    model=model,
+                    provider=Config.LLM_PROVIDER,
+                    tokens_in=0,
+                    tokens_out=0,
+                    sources_count=0,
+                )
+            except Exception as e:
+                logger.warning("Failed to save chat history: %s", e)
+
+        yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
+        return
+
+    project = analysis.get("project")
+    region = analysis.get("region")
+    enhanced_query = analysis.get("enhanced_query", question)
+
     category = classify_question(question)
+    ctx = _prepare_rag_context(
+        enhanced_query, max_chunks, project=project, region=region
+    )
 
     if ctx.get("empty"):
         yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model})}\n\n"
@@ -490,12 +571,127 @@ def generate_rag_stream(
 
     logger.info(
         "RAG stream completed: provider=%s, question='%s', category=%s, "
-        "tokens_in=%d, tokens_out=%d",
+        "project=%s, region=%s, tokens_in=%d, tokens_out=%d",
         Config.LLM_PROVIDER,
         question[:50],
         category,
+        project,
+        region,
         tokens_in,
         tokens_out,
     )
 
     yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
+
+
+def generate_rag_response(
+    question: str,
+    max_chunks: int = 5,
+    session_id: str = "",
+    chat_history: list[dict] | None = None,
+) -> dict[str, Any]:
+    analysis = analyze_context(question, chat_history)
+
+    if analysis.get("status") == "need_info":
+        follow_up = analysis.get("follow_up", "Poderia me dar mais detalhes?")
+        category = classify_question(question)
+        return {
+            "question": question,
+            "answer": follow_up,
+            "sources": {"tickets": [], "logistics": []},
+            "model": Config.get_llm_model(),
+            "category": category,
+            "chat_id": 0,
+            "need_info": True,
+        }
+
+    project = analysis.get("project")
+    region = analysis.get("region")
+    enhanced_query = analysis.get("enhanced_query", question)
+
+    ctx = _prepare_rag_context(
+        enhanced_query, max_chunks, project=project, region=region
+    )
+
+    if ctx.get("empty"):
+        return {
+            "question": question,
+            "answer": "Não encontrei documentos relevantes na base de conhecimento.",
+            "sources": {"tickets": [], "logistics": []},
+            "model": ctx["model"],
+            "category": "outro",
+            "chat_id": 0,
+        }
+
+    model = ctx["model"]
+
+    try:
+        if Config.is_openai_llm():
+            client = _get_openai_client()
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": ctx["system_prompt"]},
+                    {"role": "user", "content": ctx["user_prompt"]},
+                ],
+                temperature=0.7,
+                top_p=0.9,
+                max_tokens=1024,
+            )
+            answer = response.choices[0].message.content.strip()
+            tokens_in = response.usage.prompt_tokens
+            tokens_out = response.usage.completion_tokens
+        else:
+            resp = requests.post(
+                f"{Config.OLLAMA_HOST.rstrip('/')}/api/chat",
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": ctx["system_prompt"]},
+                        {"role": "user", "content": ctx["user_prompt"]},
+                    ],
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.7,
+                        "top_p": 0.9,
+                        "num_predict": 1024,
+                        "num_ctx": 4096,
+                    },
+                },
+                timeout=300,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            answer = data.get("message", {}).get("content", "").strip()
+            tokens_in = data.get("prompt_eval_count", 0)
+            tokens_out = data.get("eval_count", 0)
+    except Exception as e:
+        raise RuntimeError(f"Erro ao gerar resposta via {Config.LLM_PROVIDER}: {e}")
+
+    category = classify_question(question)
+
+    chat_id = 0
+    if session_id:
+        try:
+            chat_id = save_chat(
+                session_id=session_id,
+                question=question,
+                answer=answer,
+                category=category,
+                model=model,
+                provider=Config.LLM_PROVIDER,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                sources_count=len(ctx["ticket_chunks"]) + len(ctx["logistics_chunks"]),
+            )
+        except Exception as e:
+            logger.warning("Failed to save chat history: %s", e)
+
+    return {
+        "question": question,
+        "answer": answer,
+        "sources": ctx["sources"],
+        "model": model,
+        "category": category,
+        "chat_id": chat_id,
+    }

@@ -22,6 +22,11 @@ rag_input = ns.model(
             default="",
             description="ID da sessão para histórico",
         ),
+        "chat_history": fields.List(
+            fields.Raw,
+            description="Histórico da conversa [{role, content}]",
+            default=[],
+        ),
     },
 )
 
@@ -76,12 +81,14 @@ class RAGTickets(Resource):
         question = data["question"]
         max_chunks = min(max(data.get("max_chunks", 5), 1), 10)
         session_id = data.get("session_id", "")
+        chat_history = data.get("chat_history", [])
 
         try:
             return generate_rag_response(
                 question=question,
                 max_chunks=max_chunks,
                 session_id=session_id,
+                chat_history=chat_history,
             )
         except ConnectionError as e:
             ns.abort(503, str(e))
@@ -102,12 +109,14 @@ class RAGTicketsStream(Resource):
 
         max_chunks = min(max(data.get("max_chunks", 5), 1), 10)
         session_id = data.get("session_id", "")
+        chat_history = data.get("chat_history", [])
 
         return Response(
             generate_rag_stream(
                 question=question,
                 max_chunks=max_chunks,
                 session_id=session_id,
+                chat_history=chat_history,
             ),
             mimetype="text/event-stream",
             headers={
