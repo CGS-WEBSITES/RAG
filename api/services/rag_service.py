@@ -314,40 +314,46 @@ def _prepare_rag_context(
     max_chunks: int = 5,
     project: str | None = None,
     region: str | None = None,
+    category: str | None = None,
 ) -> dict:
     model = Config.get_llm_model()
 
     ticket_chunks = semantic_search(question, limit=max_chunks, source="tickets")
     ticket_chunks = _filter_chunks(ticket_chunks)
 
-    logistics_limit = 3 if project or region else 1
-    logistics_chunks = semantic_search(
-        question, limit=logistics_limit, source="logistics"
-    )
-    logistics_chunks = _filter_chunks(logistics_chunks)
+    LOGISTICS_CATEGORIES = {"atraso_entrega", "rastreamento", "status_pedido", "outro"}
+    include_logistics = category in LOGISTICS_CATEGORIES if category else True
 
-    if project and logistics_chunks:
-        filtered = [
-            c
-            for c in logistics_chunks
-            if project.lower() in c.get("title", "").lower()
-            or project.lower() in c.get("chunk", "").lower()
-        ]
-        if filtered:
-            logistics_chunks = filtered
+    logistics_chunks = []
+    if include_logistics:
+        logistics_limit = 3 if project or region else 1
+        logistics_chunks = semantic_search(
+            question, limit=logistics_limit, source="logistics"
+        )
+        logistics_chunks = _filter_chunks(logistics_chunks)
 
-    if region and logistics_chunks:
-        filtered = [
-            c
-            for c in logistics_chunks
-            if region.lower() in c.get("title", "").lower()
-            or region.lower() in c.get("chunk", "").lower()
-        ]
-        if filtered:
-            logistics_chunks = filtered
+        if project and logistics_chunks:
+            filtered = [
+                c
+                for c in logistics_chunks
+                if project.lower() in c.get("title", "").lower()
+                or project.lower() in c.get("chunk", "").lower()
+            ]
+            if filtered:
+                logistics_chunks = filtered
 
-    if len(logistics_chunks) > 1:
-        logistics_chunks = logistics_chunks[:1]
+        if region and logistics_chunks:
+            filtered = [
+                c
+                for c in logistics_chunks
+                if region.lower() in c.get("title", "").lower()
+                or region.lower() in c.get("chunk", "").lower()
+            ]
+            if filtered:
+                logistics_chunks = filtered
+
+        if len(logistics_chunks) > 1:
+            logistics_chunks = logistics_chunks[:1]
 
     voice_tone_docs = get_all_by_source("voice_tone")
 
@@ -474,7 +480,7 @@ def generate_rag_stream(
 
     category = classify_question(question)
     ctx = _prepare_rag_context(
-        enhanced_query, max_chunks, project=project, region=region
+        enhanced_query, max_chunks, project=project, region=region, category=category
     )
 
     if ctx.get("empty"):
@@ -610,7 +616,11 @@ def generate_rag_response(
     enhanced_query = analysis.get("enhanced_query", question)
 
     ctx = _prepare_rag_context(
-        enhanced_query, max_chunks, project=project, region=region
+        enhanced_query,
+        max_chunks,
+        project=project,
+        region=region,
+        category=classify_question(question),
     )
 
     if ctx.get("empty"):
