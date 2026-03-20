@@ -39,7 +39,7 @@ Na primeira execução vai demorar mais por conta do download das imagens e buil
 
 ### Acessos
 
-- **Swagger UI:** http://localhost:5000/docs
+- **Swagger UI:** http://localhost:5001/docs
 - **Frontend:** http://localhost:5173 (em dev com `npm run dev`)
 
 ## Comandos úteis
