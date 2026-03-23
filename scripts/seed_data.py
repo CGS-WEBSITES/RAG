@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import sys
 from pathlib import Path
 
@@ -22,7 +23,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 def _count_by_source(source: str) -> int:
     with get_cursor() as cur:
         cur.execute(
-            "SELECT COUNT(*) as total FROM documents " "WHERE metadata->>'source' = %s",
+            "SELECT COUNT(*) as total FROM documents WHERE metadata->>'source' = %s",
             (source,),
         )
         row = cur.fetchone()
@@ -32,12 +33,138 @@ def _count_by_source(source: str) -> int:
 def _create_document(title: str, content: str, metadata: dict) -> None:
     with get_cursor() as cur:
         cur.execute(
-            """
-            INSERT INTO documents (title, content, metadata)
-            VALUES (%s, %s, %s)
-            """,
+            "INSERT INTO documents (title, content, metadata) VALUES (%s, %s, %s)",
             (title, content, json.dumps(metadata)),
         )
+
+
+JUNK_PATTERNS = [
+    # Notificações do Freshworks
+    r"Your Freshworks account.*?(?:All Rights Reserved\.?)",
+    r"Your profile details were updated.*?(?:All Rights Reserved\.?)",
+    r"Freshworks Inc\..*?(?:All Rights Reserved\.?)",
+    # Assinaturas corporativas
+    r"-{3,}.*?Due to high volume.*?(?:response|$)",
+    r"-{3,}.*?(?:contents of this email|confidential).*?(?:future\.?|$)",
+    r"The contents of this email.*?(?:in\s*the\s*future\.?|$)",
+    r"Due to high volume.*?(?:response|$)",
+    # Headers de ticket do Freshworks
+    r"Please take a look at ticket\s*\n?#\d+\s*\n?raised by.*?(?:\)|\.)",
+    r"Creative Games Studio powered by Freshdesk",
+    # Citações de email
+    r"Em \d{4}-\d{2}-\d{2}.*?escreveu:",
+    r"On \w+,\s+\w+\s+\d+,\s+\d{4}\s+at\s+\d+:\d+\s*(?:AM|PM).*?wrote:",
+    r"On \w{3}, \w{3} \d+, \d{4} at \d+:\d+ (?:AM|PM).*?wrote:",
+]
+
+# Padrões de dados sensíveis
+SENSITIVE_PATTERNS = [
+    (r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", ""),
+    (r"https?://[^\s\)]+", ""),
+    (r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", ""),
+    (r"(?:Crowdox\s*)?Order\s*ID\s*#?\s*\d+", ""),
+    (r"\b\d{3}\.\d{3}\.\d{3}[-]\d{2}\b", ""),  # CPF
+    (r"\b\d{2}\.\d{3}\.\d{3}/\d{4}[-]\d{2}\b", ""),  # CNPJ
+]
+
+# Padrões de nomes (remover nomes próprios comuns em saudações/assinaturas)
+NAME_PATTERNS = [
+    # Saudações com nome
+    r"(?:Hi|Hello|Dear|Thanks|Thank you|Regards|Best regards|Kind regards|"
+    r"Obrigado|Olá|Prezado|Caro|Att|Atenciosamente|Oi)\s*[,;.:!]?\s*"
+    r"[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,3}",
+    # Assinaturas com cargo
+    r"[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}\s+"
+    r"(?:SALES|Sales|EXECUTIVE|Executive|MANAGER|Manager|SUPPORT|Support|"
+    r"CUSTOMER SERVICE|Customer Service|ATENDIMENTO|Atendimento)",
+    # Nome + CREATIVE GAMES STUDIO
+    r"[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}\s*\n\s*CREATIVE GAMES STUDIO",
+]
+
+# Endereços (padrão simples)
+ADDRESS_PATTERNS = [
+    r"\d+\s+[A-Z][a-z]+(?:\s+[A-Z]?[a-z]+)*\s+"
+    r"(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Park|Blvd|Way|Rua|Avenida|Av)\b",
+    # Blocos com CEP/Postal Code
+    r"[A-Z]{1,2}\d{1,2}\s?\d[A-Z]{2}",  # UK postal
+    r"\b\d{5}[-]?\d{3}\b",  # BR CEP
+]
+
+
+def _clean_ticket_text(text: str) -> str:
+    if not text:
+        return ""
+
+    lines = text.split("\n")
+    cleaned_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith(">"):
+            continue
+        cleaned_lines.append(line)
+    text = "\n".join(cleaned_lines)
+
+    for pattern in JUNK_PATTERNS:
+        text = re.sub(pattern, "", text, flags=re.IGNORECASE | re.DOTALL)
+
+    for pattern, replacement in SENSITIVE_PATTERNS:
+        text = re.sub(pattern, replacement, text)
+
+    for pattern in NAME_PATTERNS:
+        text = re.sub(pattern, "", text, flags=re.MULTILINE)
+
+    for pattern in ADDRESS_PATTERNS:
+        text = re.sub(pattern, "", text)
+
+    text = re.sub(r"CREATIVE GAMES STUDIO", "", text)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r".*raised by.*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"^[\s\-\*=_]{3,}$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"[\u200b\u200c\u200d\ufeff\xa0]", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = text.strip()
+
+    return text
+
+
+def _is_junk_ticket(text: str) -> bool:
+    clean = re.sub(r"\s+", " ", text).strip()
+    if len(clean) < 30:
+        return True
+
+    without_labels = re.sub(r"(?:Pergunta|Resposta)\s*:", "", clean).strip()
+    if len(without_labels) < 20:
+        return True
+    return False
+
+
+def _detect_language(text: str) -> str:
+    pt_words = {
+        "obrigado",
+        "pedido",
+        "entrega",
+        "por favor",
+        "olá",
+        "endereço",
+        "reembolso",
+        "estorno",
+        "atraso",
+        "envio",
+        "prazo",
+        "aguardando",
+    }
+    text_lower = text.lower()
+    pt_count = sum(1 for w in pt_words if w in text_lower)
+    return "pt" if pt_count >= 2 else "en"
+
+
+def _detect_project(text: str) -> str | None:
+    projects = ["drunagor", "dante", "forfun", "oathfall", "magnus", "frosthaven"]
+    text_lower = text.lower()
+    for p in projects:
+        if p in text_lower:
+            return p.capitalize()
+    return None
 
 
 def seed_logistics():
@@ -102,25 +229,58 @@ def seed_tickets():
         dados = json.load(f)
 
     count = 0
+    skipped = 0
     for item in dados:
         try:
             id_ticket = item.get("id", "")
-            pergunta = item.get("texto_original", "")
-            respostas = "\n---\n".join(item.get("respostas", []))
+            pergunta_raw = item.get("texto_original", "")
+            respostas_raw = item.get("respostas", [])
+
+            pergunta = _clean_ticket_text(pergunta_raw)
+
+            respostas = []
+            for r in respostas_raw:
+                cleaned = _clean_ticket_text(r)
+                if cleaned and len(cleaned.strip()) > 10:
+                    respostas.append(cleaned)
+
+            parts = []
+            if pergunta:
+                parts.append(f"Pergunta: {pergunta}")
+            if respostas:
+                parts.append(f"Resposta: {respostas[0]}")
+
+                for i, r in enumerate(respostas[1:], 2):
+                    parts.append(f"Continuação {i}: {r}")
+
+            content = "\n\n".join(parts)
+
+            if _is_junk_ticket(content):
+                skipped += 1
+                continue
 
             title = f"Ticket {id_ticket}"
-            content = f"Pergunta: {pergunta}\n\nResposta:\n{respostas}"
 
-            _create_document(
-                title=title,
-                content=content,
-                metadata={"source": source, "id_original": str(id_ticket)},
-            )
+            full_text = pergunta_raw + " " + " ".join(respostas_raw)
+            language = _detect_language(full_text)
+            project = _detect_project(full_text)
+
+            metadata = {
+                "source": source,
+                "id_original": str(id_ticket),
+                "language": language,
+            }
+            if project:
+                metadata["project"] = project
+
+            _create_document(title=title, content=content, metadata=metadata)
             count += 1
         except Exception as e:
             logger.error("Erro no ticket %s: %s", item.get("id"), e)
 
-    logger.info("Tickets: %d registros inseridos", count)
+    logger.info(
+        "Tickets: %d registros inseridos, %d descartados (lixo)", count, skipped
+    )
     return count
 
 
@@ -167,11 +327,7 @@ def seed_voice_tone():
                 _create_document(
                     title=title,
                     content=content,
-                    metadata={
-                        "source": source,
-                        "ip": ip_nome,
-                        "categoria": categoria,
-                    },
+                    metadata={"source": source, "ip": ip_nome, "categoria": categoria},
                 )
                 count += 1
             except Exception as e:
@@ -223,12 +379,7 @@ def seed_game_comments():
             _create_document(
                 title=title,
                 content=content,
-                metadata={
-                    "source": source,
-                    "jogo": jogo,
-                    "nota": nota,
-                    "data": data,
-                },
+                metadata={"source": source, "jogo": jogo, "nota": nota, "data": data},
             )
             count += 1
         except Exception as e:
