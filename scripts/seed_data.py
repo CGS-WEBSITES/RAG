@@ -20,6 +20,10 @@ logger = logging.getLogger("seed_data")
 SCRIPTS_DIR = Path(__file__).resolve().parent
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def _count_by_source(source: str) -> int:
     with get_cursor() as cur:
         cur.execute(
@@ -38,6 +42,11 @@ def _create_document(title: str, content: str, metadata: dict) -> None:
         )
 
 
+# ---------------------------------------------------------------------------
+# Pipeline de limpeza de tickets
+# ---------------------------------------------------------------------------
+
+# Padrões de lixo para remover completamente
 JUNK_PATTERNS = [
     # Notificações do Freshworks
     r"Your Freshworks account.*?(?:All Rights Reserved\.?)",
@@ -49,52 +58,100 @@ JUNK_PATTERNS = [
     r"The contents of this email.*?(?:in\s*the\s*future\.?|$)",
     r"Due to high volume.*?(?:response|$)",
     # Headers de ticket do Freshworks
-    r"Please take a look at ticket\s*\n?#\d+\s*\n?raised by.*?(?:\)|\.)",
+    r"Please take a look at ticket\s*\n?#?\d+\s*\n?(?:raised by.*?(?:\)|\.|\n))?",
     r"Creative Games Studio powered by Freshdesk",
     # Citações de email
     r"Em \d{4}-\d{2}-\d{2}.*?escreveu:",
     r"On \w+,\s+\w+\s+\d+,\s+\d{4}\s+at\s+\d+:\d+\s*(?:AM|PM).*?wrote:",
     r"On \w{3}, \w{3} \d+, \d{4} at \d+:\d+ (?:AM|PM).*?wrote:",
+    # Forwarded message headers
+    r"-{5,}\s*Forwarded message\s*-{5,}.*?(?:\n\n|\Z)",
+    r"From:.*?\nDate:.*?\nSubject:.*?\nTo:.*?\n",
+    # Client de email
+    r"Sent from (?:Yahoo Mail|my iPhone|my iPad|Mail for Windows|Samsung|Outlook).*",
+    # CSS inline (Yahoo Mail, etc)
+    r"#yiv\d+[^}]*\}",
+    r"#yiv\d+\s+[^{]*\{[^}]*\}",
+    r"\[CoD:.*?\].*?(?=#yiv|$)",
+    # Formulário de contato
+    r"Name:\*?\s*.*?\n",
+    r"Email\*?\s*\n",
+    r"message\*?\s*",
+    # Menções @
+    r"@[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}",
+    # Backer numbers
+    r"(?:backer\s*(?:number|#|num)\s*(?:is\s*)?)?#\d{3,6}\b",
+    # "refunded on ticket XXXX"
+    r"refunded on ticket \d+\.?",
+    # "another com[ae] patient"
+    r"another com[ae] patient:?",
+    # CGS variations
+    r"Team CGS",
+    r"CGS Team",
+    r"Customer Service\s*\n\s*CREATIVE GAMES STUDIO",
 ]
 
 # Padrões de dados sensíveis
 SENSITIVE_PATTERNS = [
     (r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", ""),
     (r"https?://[^\s\)]+", ""),
+    (r"(?:www\.)[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", ""),
     (r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", ""),
     (r"(?:Crowdox\s*)?Order\s*ID\s*#?\s*\d+", ""),
     (r"\b\d{3}\.\d{3}\.\d{3}[-]\d{2}\b", ""),  # CPF
     (r"\b\d{2}\.\d{3}\.\d{3}/\d{4}[-]\d{2}\b", ""),  # CNPJ
+    (r"PayPal\s+(?:you|me|us|the)", ""),
+    (r"\$\d+[\d,.]*\s*(?:usd|USD)?", ""),  # valores em dólar
 ]
 
-# Padrões de nomes (remover nomes próprios comuns em saudações/assinaturas)
+# Padrões de nomes
 NAME_PATTERNS = [
-    # Saudações com nome
+    # Saudações com nome (pt + en)
     r"(?:Hi|Hello|Dear|Thanks|Thank you|Regards|Best regards|Kind regards|"
-    r"Obrigado|Olá|Prezado|Caro|Att|Atenciosamente|Oi)\s*[,;.:!]?\s*"
-    r"[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,3}",
+    r"Warm regards|Many thanks|Obrigado|Olá|Prezado|Caro|Att|Atenciosamente|Oi)"
+    r"\s*[,;.:!]?\s*[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,3}",
     # Assinaturas com cargo
     r"[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}\s+"
     r"(?:SALES|Sales|EXECUTIVE|Executive|MANAGER|Manager|SUPPORT|Support|"
     r"CUSTOMER SERVICE|Customer Service|ATENDIMENTO|Atendimento)",
     # Nome + CREATIVE GAMES STUDIO
     r"[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}\s*\n\s*CREATIVE GAMES STUDIO",
+    # Nome sozinho em uma linha (2-3 palavras capitalizadas, sem contexto)
+    r"^[A-ZÀ-Ü][a-zà-ü]{2,15}(?:\s+[A-ZÀ-Ü][a-zà-ü]{2,15}){0,2}\s*$",
+    # "Fulano says:" (gamefound/BGG comments)
+    r"[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}\s+says:",
+    # "-- Fulano" (assinatura de email)
+    r"^--\s*\n\s*[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}\s*$",
+    # "Att; Fulano" ou "Att., Fulano"
+    r"(?:Att|ATT)\s*[;.,:]?\s*[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}",
 ]
 
-# Endereços (padrão simples)
+# Endereços
 ADDRESS_PATTERNS = [
+    # Número + rua (en + pt)
     r"\d+\s+[A-Z][a-z]+(?:\s+[A-Z]?[a-z]+)*\s+"
-    r"(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Park|Blvd|Way|Rua|Avenida|Av)\b",
-    # Blocos com CEP/Postal Code
-    r"[A-Z]{1,2}\d{1,2}\s?\d[A-Z]{2}",  # UK postal
-    r"\b\d{5}[-]?\d{3}\b",  # BR CEP
+    r"(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Park|Blvd|Way|Rua|Avenida|Av|Flatts|Crescent|Close|Court|Place|Terrace)\b",
+    # Bloco endereço: cidade + estado/país em linhas consecutivas (UK/US style)
+    r"^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\n[A-Z]{2}\d{1,2}\s?\d[A-Z]{2}$",  # City + UK postal
+    # UK postal codes
+    r"\b[A-Z]{1,2}\d{1,2}\s?\d[A-Z]{2}\b",
+    # BR CEP
+    r"\b\d{5}[-]?\d{3}\b",
+    # US ZIP
+    r"\b\d{5}(?:-\d{4})?\b(?=\s*(?:USA|US|United States|United Kingdom|UK))",
 ]
 
 
 def _clean_ticket_text(text: str) -> str:
+    """Pipeline de limpeza de texto de ticket."""
     if not text:
         return ""
 
+    # 0. Remover CSS inline inteiro (Yahoo Mail widgets etc)
+    text = re.sub(r"#yiv\d+[^\n]*", "", text)
+    text = re.sub(r"\{[^}]*(?:margin|padding|border|display|height|width|font)[^}]*\}", "", text)
+
+    # 1. Remover linhas com > (quotes de email)
     lines = text.split("\n")
     cleaned_lines = []
     for line in lines:
@@ -104,34 +161,61 @@ def _clean_ticket_text(text: str) -> str:
         cleaned_lines.append(line)
     text = "\n".join(cleaned_lines)
 
+    # 2. Remover HTML tags
+    text = re.sub(r"<[^>]+>", "", text)
+
+    # 3. Remover padrões de lixo
     for pattern in JUNK_PATTERNS:
         text = re.sub(pattern, "", text, flags=re.IGNORECASE | re.DOTALL)
 
+    # 4. Remover dados sensíveis
     for pattern, replacement in SENSITIVE_PATTERNS:
         text = re.sub(pattern, replacement, text)
 
+    # 5. Remover nomes em saudações/assinaturas
     for pattern in NAME_PATTERNS:
         text = re.sub(pattern, "", text, flags=re.MULTILINE)
 
+    # 6. Remover endereços
     for pattern in ADDRESS_PATTERNS:
-        text = re.sub(pattern, "", text)
+        text = re.sub(pattern, "", text, flags=re.MULTILINE)
 
-    text = re.sub(r"CREATIVE GAMES STUDIO", "", text)
-    text = re.sub(r"<[^>]+>", "", text)
+    # 7. Remover "CREATIVE GAMES STUDIO" sozinho
+    text = re.sub(r"CREATIVE GAMES STUDIO", "", text, flags=re.IGNORECASE)
+
+    # 8. Remover linhas com "raised by"
     text = re.sub(r".*raised by.*", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"^[\s\-\*=_]{3,}$", "", text, flags=re.MULTILINE)
+
+    # 9. Remover linhas só com traços, asteriscos, espaços ou pontuação
+    text = re.sub(r"^[\s\-\*=_\.,:;]{3,}$", "", text, flags=re.MULTILINE)
+
+    # 10. Remover unicode zero-width spaces e caracteres invisíveis
     text = re.sub(r"[\u200b\u200c\u200d\ufeff\xa0]", " ", text)
+
+    # 11. Remover linhas com apenas 1-2 caracteres (lixo residual)
+    text = re.sub(r"^.{1,2}$", "", text, flags=re.MULTILINE)
+
+    # 12. Remover "Resposta:" seguido de vírgula ou vazio (resíduos de saudação removida)
+    text = re.sub(r"Resposta:\s*,?\s*\n", "Resposta:\n", text)
+
+    # 13. Colapsar múltiplas linhas vazias
     text = re.sub(r"\n{3,}", "\n\n", text)
+
+    # 14. Colapsar múltiplos espaços
+    text = re.sub(r" {2,}", " ", text)
+
+    # 15. Trim
     text = text.strip()
 
     return text
 
 
 def _is_junk_ticket(text: str) -> bool:
+    """Verifica se o ticket é lixo (muito curto ou sem conteúdo útil)."""
     clean = re.sub(r"\s+", " ", text).strip()
     if len(clean) < 30:
         return True
-
+    # Se é só "Pergunta:" e "Resposta:" sem conteúdo real
     without_labels = re.sub(r"(?:Pergunta|Resposta)\s*:", "", clean).strip()
     if len(without_labels) < 20:
         return True
@@ -139,26 +223,16 @@ def _is_junk_ticket(text: str) -> bool:
 
 
 def _detect_language(text: str) -> str:
-    pt_words = {
-        "obrigado",
-        "pedido",
-        "entrega",
-        "por favor",
-        "olá",
-        "endereço",
-        "reembolso",
-        "estorno",
-        "atraso",
-        "envio",
-        "prazo",
-        "aguardando",
-    }
+    """Detecta idioma baseado em palavras-chave simples."""
+    pt_words = {"obrigado", "pedido", "entrega", "por favor", "olá", "endereço",
+                "reembolso", "estorno", "atraso", "envio", "prazo", "aguardando"}
     text_lower = text.lower()
     pt_count = sum(1 for w in pt_words if w in text_lower)
     return "pt" if pt_count >= 2 else "en"
 
 
 def _detect_project(text: str) -> str | None:
+    """Detecta projeto mencionado no ticket."""
     projects = ["drunagor", "dante", "forfun", "oathfall", "magnus", "frosthaven"]
     text_lower = text.lower()
     for p in projects:
@@ -166,6 +240,10 @@ def _detect_project(text: str) -> str | None:
             return p.capitalize()
     return None
 
+
+# ---------------------------------------------------------------------------
+# Seeds
+# ---------------------------------------------------------------------------
 
 def seed_logistics():
     source = "logistics"
@@ -236,31 +314,36 @@ def seed_tickets():
             pergunta_raw = item.get("texto_original", "")
             respostas_raw = item.get("respostas", [])
 
+            # Limpar pergunta
             pergunta = _clean_ticket_text(pergunta_raw)
 
+            # Limpar cada resposta e filtrar vazias
             respostas = []
             for r in respostas_raw:
                 cleaned = _clean_ticket_text(r)
                 if cleaned and len(cleaned.strip()) > 10:
                     respostas.append(cleaned)
 
+            # Montar conteúdo limpo
             parts = []
             if pergunta:
                 parts.append(f"Pergunta: {pergunta}")
             if respostas:
                 parts.append(f"Resposta: {respostas[0]}")
-
+                # Se tem mais respostas, incluir como continuação
                 for i, r in enumerate(respostas[1:], 2):
                     parts.append(f"Continuação {i}: {r}")
 
             content = "\n\n".join(parts)
 
+            # Verificar se não é lixo
             if _is_junk_ticket(content):
                 skipped += 1
                 continue
 
             title = f"Ticket {id_ticket}"
 
+            # Detectar metadados
             full_text = pergunta_raw + " " + " ".join(respostas_raw)
             language = _detect_language(full_text)
             project = _detect_project(full_text)
@@ -278,9 +361,7 @@ def seed_tickets():
         except Exception as e:
             logger.error("Erro no ticket %s: %s", item.get("id"), e)
 
-    logger.info(
-        "Tickets: %d registros inseridos, %d descartados (lixo)", count, skipped
-    )
+    logger.info("Tickets: %d registros inseridos, %d descartados (lixo)", count, skipped)
     return count
 
 
@@ -313,9 +394,7 @@ def seed_voice_tone():
                             lines.append(f"{sub_cat}: {', '.join(map(str, conteudo))}")
                         else:
                             lines.append(f"{sub_cat}: {conteudo}")
-                    content = f"IP: {ip_nome}\nCategoria: {categoria}\n" + "\n".join(
-                        lines
-                    )
+                    content = f"IP: {ip_nome}\nCategoria: {categoria}\n" + "\n".join(lines)
                 elif isinstance(valor, list):
                     content = (
                         f"IP: {ip_nome}\nCategoria: {categoria}\n"
@@ -342,9 +421,7 @@ def seed_game_comments():
     filepath = SCRIPTS_DIR / "base_comentarios_jogos.json"
 
     if not filepath.exists():
-        logger.warning(
-            "Arquivo não encontrado: %s — pulando comentários de jogos", filepath
-        )
+        logger.warning("Arquivo não encontrado: %s — pulando comentários de jogos", filepath)
         return 0
 
     existing = _count_by_source(source)
@@ -409,7 +486,6 @@ def main():
     except Exception as e:
         logger.error("Erro durante seed: %s", e)
         import traceback
-
         traceback.print_exc()
         return 1
     finally:
