@@ -12,9 +12,6 @@ from api.services.history_service import save_chat
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constantes
-# ---------------------------------------------------------------------------
 MAX_CHUNK_LENGTH = 500
 RELEVANCE_THRESHOLD = 1.5
 
@@ -59,13 +56,7 @@ def _build_sources(chunks: list[dict]) -> list[dict]:
     ]
 
 
-# ---------------------------------------------------------------------------
-# Classificação automática
-# ---------------------------------------------------------------------------
-
-
 def classify_question(question: str) -> str:
-    """Classifica a pergunta em uma categoria usando o LLM."""
     categories_str = ", ".join(CATEGORIES)
     prompt = (
         f"Classify this customer support question into exactly ONE category.\n"
@@ -105,10 +96,6 @@ def classify_question(question: str) -> str:
         return "outro"
 
 
-# ---------------------------------------------------------------------------
-# Camada de análise de contexto
-# ---------------------------------------------------------------------------
-
 CONTEXT_ANALYSIS_PROMPT = """You are a context analyzer for a customer support system of Creative Games Studio (CGS), a board game company.
 
 CGS has multiple board game projects shipped to different regions worldwide.
@@ -118,10 +105,10 @@ Analyze the user's question AND the conversation history to determine if you hav
 You MUST respond in valid JSON only, no markdown, no backticks:
 
 If context is SUFFICIENT:
-{"status": "ready", "project": "detected project or null", "region": "detected region or null", "enhanced_query": "the question enriched with context from history"}
+{"status": "ready", "project": "detected project or null", "region": "detected region or null", "language": "detected language code (pt or en)", "enhanced_query": "the question enriched with context from history"}
 
 If context is MISSING:
-{"status": "need_info", "missing": ["list of what's missing"], "follow_up": "a friendly question in the SAME LANGUAGE as the user asking for the missing info"}
+{"status": "need_info", "missing": ["list of what's missing"], "language": "detected language code (pt or en)", "follow_up": "a friendly question in the SAME LANGUAGE as the FIRST user message asking for the missing info"}
 
 CRITICAL RULES FOR CLASSIFICATION:
 
@@ -154,11 +141,10 @@ OTHER RULES:
 
 
 def analyze_context(question: str, chat_history: list[dict] | None = None) -> dict:
-    """Analisa se a pergunta tem contexto suficiente para uma resposta precisa."""
     history_text = ""
     if chat_history:
         history_parts = []
-        for msg in chat_history[-6:]:  # últimas 6 mensagens
+        for msg in chat_history[-6:]:
             role = "User" if msg.get("role") == "user" else "Assistant"
             history_parts.append(f"{role}: {msg.get('content', '')}")
         history_text = "\n".join(history_parts)
@@ -220,37 +206,20 @@ def analyze_context(question: str, chat_history: list[dict] | None = None) -> di
         }
 
 
-# ---------------------------------------------------------------------------
-# Filtro de dados sensíveis
-# ---------------------------------------------------------------------------
-
-
 def _sanitize_text(text: str) -> str:
-    """Remove dados sensíveis do texto antes de exibir ao usuário (última linha de defesa)."""
-    # HTML
     text = re.sub(r"<[^>]+>", "", text)
-
-    # CSS inline (Yahoo Mail etc)
     text = re.sub(r"#yiv\d+[^\n]*", "", text)
     text = re.sub(
         r"\{[^}]*(?:margin|padding|border|display|height|width|font)[^}]*\}", "", text
     )
-
-    # URLs e domínios
     text = re.sub(r"https?://[^\s\)]+", "", text)
     text = re.sub(
         r"(?:www\.)?[a-zA-Z0-9-]+\.(?:com|com\.br|org|net|io|app)(?:\.[a-z]{2,3})?(?:/[^\s]*)?",
         "",
         text,
     )
-
-    # Emails
     text = re.sub(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", "", text)
-
-    # IPs
     text = re.sub(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", "", text)
-
-    # Order IDs, Pledge IDs, Backer IDs
     text = re.sub(r"(?:Crowdox\s*)?Order\s*ID\s*#?\s*\d+", "", text)
     text = re.sub(r"Pledge\s*(?:id|ID)\s*\w+", "", text)
     text = re.sub(
@@ -260,56 +229,34 @@ def _sanitize_text(text: str) -> str:
         flags=re.IGNORECASE,
     )
     text = re.sub(r"#\d{5,}", "", text)
-
-    # CPF / CNPJ
     text = re.sub(r"\b\d{3}\.\d{3}\.\d{3}[-]\d{2}\b", "", text)
     text = re.sub(r"\b\d{2}\.\d{3}\.\d{3}/\d{4}[-]\d{2}\b", "", text)
-
-    # Postal codes
     text = re.sub(r"\b[A-Z]{1,2}\d{1,2}\s?\d[A-Z]{2}\b", "", text)
     text = re.sub(r"\b\d{5}[-]?\d{3}\b", "", text)
-
-    # Telefones
     text = re.sub(r"[\+]?\d[\d\s\-\(\)]{8,}\d", "", text)
-
-    # Valores em dólar
     text = re.sub(r"\$\d+[\d,.]*\s*(?:usd|USD)?", "", text)
-
-    # Menções @
     text = re.sub(r"@[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}", "", text)
-
-    # --- NOMES ---
-
-    # Saudações com nome (pt + en, incluindo variações)
     text = re.sub(
         r"(?:Hi|Hello|Dear|Thanks|Thank you|Regards|Best regards|Kind regards|Warm regards|"
-        r"Many thanks|Obrigado|Olá|Prezado|Caro|Att|Atenciosamente|Oi|OI|oi|At\.te)\s*[,;.:!]?\s*"
+        r"Many thanks|Obrigado|Olá|Prezado|Caro|Att|Atenciosamente|Oi|OI|oi|At\.te|Ei)\s*[,;.:!]?\s*"
         r"[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,3}",
         "",
         text,
     )
-
-    # Nomes após separadores de thread ---
     text = re.sub(
         r"(?:^---\s*\n\s*)[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,3}",
         "",
         text,
         flags=re.MULTILINE,
     )
-
-    # "raised by Fulano"
     text = re.sub(r"raised by\s+[A-Za-zÀ-ü\s]+\s*\([^)]*\)", "", text)
     text = re.sub(r"raised by\s+[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+)*", "", text)
-
-    # Nomes sozinhos em linhas (2-3 palavras capitalizadas, incluindo capitalização irregular como DereK)
     text = re.sub(
         r"^[A-ZÀ-Ü][a-zà-üA-Z]{1,20}(?:\s+[A-ZÀ-Ü][a-zà-üA-Z]{1,20}){0,3}\s*$",
         "",
         text,
         flags=re.MULTILINE,
     )
-
-    # Nomes antes de cargos
     text = re.sub(
         r"[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}\s+"
         r"(?:SALES|Sales|EXECUTIVE|Executive|MANAGER|Manager|SUPPORT|Support|"
@@ -317,38 +264,42 @@ def _sanitize_text(text: str) -> str:
         "",
         text,
     )
-
-    # "Att; Fulano"
     text = re.sub(
         r"(?:Att|ATT|At\.te)\s*[;.,:]?\s*[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}",
         "",
         text,
     )
-
-    # "Fulano says:"
+    text = re.sub(
+        r"(?:Meu nome é|My name is|Me chamo|I am|I\'m)\s+[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"(?:conversei com|falei com|com a|com o|sou a|sou o)\s+[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"[A-ZÀ-Ü][a-zà-ü]+\s+(?:referred|encaminhou|me passaram|passaram)",
+        "",
+        text,
+    )
     text = re.sub(r"[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}\s+says:", "", text)
-
-    # "De: fulano" / "From: fulano"
     text = re.sub(
         r"(?:De|From|To|Para|Enviado|Sent|Date|Subject|Assunto):.*?\n",
         "",
         text,
         flags=re.IGNORECASE,
     )
-
-    # "-- Fulano" (assinatura)
     text = re.sub(
         r"^--\s*\n\s*[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}\s*$",
         "",
         text,
         flags=re.MULTILINE,
     )
-
-    # "Name:* Fulano"
     text = re.sub(r"Name:\*?\s*[A-ZÀ-Ü].*?\n", "", text)
-
-    # --- ENDEREÇOS ---
-
     text = re.sub(
         r"\d+\s+[A-Z][a-z]+(?:\s+[A-Z]?[a-z]+)*\s+"
         r"(?:Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Park|Blvd|Way|Rua|Avenida|Av|"
@@ -356,92 +307,75 @@ def _sanitize_text(text: str) -> str:
         "",
         text,
     )
-
-    # "Zip Code" + número
+    text = re.sub(
+        r"(?:Avenida|Rua|Alameda|Travessa|Estrada|Rodovia)\s+(?:Dr\.?\s+)?[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü]?[a-zà-ü]+)*(?:\s*,\s*(?:Number|Número|N[ºo°]?)?\s*\d+)?",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"(?:my address is|meu endereço é|address to|endereço para)\s*:?\s*[^\n]+(?:\n[^\n]+)*?(?=\n\n|\Z)",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r"[A-ZÀ-Ü][a-zà-ü]+,\s*[A-ZÀ-Ü][a-zà-ü\s]+/[A-Z]{2}\s*-?\s*(?:Brazil|Brasil)",
+        "",
+        text,
+    )
     text = re.sub(r"Zip\s*Code\s*\d*", "", text, flags=re.IGNORECASE)
-
-    # Cidades/estados em contexto de endereço (Number XXX, City)
     text = re.sub(r"Number\s+\d+", "", text)
-
-    # --- LIXO RESIDUAL ---
-
-    # Citações de email anteriores
+    text = re.sub(
+        r"(?:United Kingdom|United States|UK|USA|Brazil|Brasil|Canada|Australia|Germany|France)\b",
+        "",
+        text,
+    )
     text = re.sub(r"(?:Em|On)\s+\d{4}-\d{2}-\d{2}.*?escreveu:", "", text)
     text = re.sub(
         r"On\s+\w+,\s+\w+\s+\d+,\s+\d{4}\s+at\s+\d+:\d+\s*(?:AM|PM).*?wrote:", "", text
     )
-
-    # Forwarded message headers
     text = re.sub(
         r"-{5,}\s*Forwarded message\s*-{5,}.*?(?:\n\n|\Z)", "", text, flags=re.DOTALL
     )
-
-    # "Sent from Yahoo Mail/iPhone/etc"
     text = re.sub(
         r"Sent from (?:Yahoo Mail|my iPhone|my iPad|Mail for Windows|Samsung|Outlook).*",
         "",
         text,
     )
-
-    # Campos de observação
     text = re.sub(
         r"(?:Observa[çc][õo]es?|Notes?|Obs|Nota|Observation|Remark|Observação)\s*:\s*[^\n]+",
         "",
         text,
         flags=re.IGNORECASE,
     )
-
-    # Assinaturas corporativas
     text = re.sub(
         r"-{5,}.*?(?:Due to high volume|contents of this email|confidential).*?(?:\n|$)",
         "",
         text,
         flags=re.IGNORECASE | re.DOTALL,
     )
-
-    # "CREATIVE GAMES STUDIO"
     text = re.sub(r"CREATIVE GAMES STUDIO", "", text, flags=re.IGNORECASE)
-
-    # PayPal
     text = re.sub(
         r"(?:PayPal|Paypal)\s+(?:you|me|us|the)\b", "", text, flags=re.IGNORECASE
     )
-
-    # IDs numéricos longos
     text = re.sub(r"\b\d{10,}\b", "", text)
-
-    # "This is intended only..." (disclaimers)
     text = re.sub(
         r"This is intended only.*?(?:prohibited|$)",
         "",
         text,
         flags=re.IGNORECASE | re.DOTALL,
     )
-
-    # "Continued in" / "PSC" / "BGG" isolados
     text = re.sub(r"\b(?:PSC|BGG)\b", "", text)
     text = re.sub(r"Continued in\s*$", "", text, flags=re.MULTILINE)
-
-    # Linhas com 1-2 caracteres
     text = re.sub(r"^.{1,2}$", "", text, flags=re.MULTILINE)
-
-    # Linhas só com traços, pontuação ou espaços
     text = re.sub(r"^[\s\-\*=_\.,:;]{3,}$", "", text, flags=re.MULTILINE)
-
-    # Unicode invisíveis
     text = re.sub(r"[\u200b\u200c\u200d\ufeff\xa0]", " ", text)
-
-    # Colapsar espaços e linhas
     text = re.sub(r" {2,}", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     text = text.strip()
 
     return text
-
-
-# ---------------------------------------------------------------------------
-# Preparação do contexto
-# ---------------------------------------------------------------------------
 
 
 def _prepare_rag_context(
@@ -450,16 +384,18 @@ def _prepare_rag_context(
     project: str | None = None,
     region: str | None = None,
     category: str | None = None,
+    language: str | None = None,
 ) -> dict:
-    """Busca documentos e monta o contexto."""
     model = Config.get_llm_model()
 
     ticket_chunks = semantic_search(question, limit=max_chunks, source="tickets")
     ticket_chunks = _filter_chunks(ticket_chunks)
 
-    # Só busca logística se a categoria for relevante
-    LOGISTICS_CATEGORIES = {"atraso_entrega", "rastreamento", "status_pedido", "outro"}
-    include_logistics = category in LOGISTICS_CATEGORIES if category else True
+    has_context = bool(project or region)
+    LOGISTICS_CATEGORIES = {"atraso_entrega", "rastreamento", "status_pedido"}
+    include_logistics = has_context or (
+        category in LOGISTICS_CATEGORIES if category else False
+    )
 
     logistics_chunks = []
     if include_logistics:
@@ -469,7 +405,6 @@ def _prepare_rag_context(
         )
         logistics_chunks = _filter_chunks(logistics_chunks)
 
-        # Filtrar logística por projeto/região se informados
         if project and logistics_chunks:
             filtered = [
                 c
@@ -481,11 +416,21 @@ def _prepare_rag_context(
                 logistics_chunks = filtered
 
         if region and logistics_chunks:
+            region_aliases = {
+                "brazil": "brasil",
+                "eua": "eua",
+                "usa": "eua",
+                "us": "eua",
+                "europe": "europa",
+                "asia": "ásia",
+                "oceania": "oceania",
+            }
+            region_normalized = region_aliases.get(region.lower(), region.lower())
             filtered = [
                 c
                 for c in logistics_chunks
-                if region.lower() in c.get("title", "").lower()
-                or region.lower() in c.get("chunk", "").lower()
+                if region_normalized in c.get("title", "").lower()
+                or region_normalized in c.get("chunk", "").lower()
             ]
             if filtered:
                 logistics_chunks = filtered
@@ -517,12 +462,14 @@ def _prepare_rag_context(
 
     context = "\n\n".join(context_parts)
 
-    # Contexto adicional de projeto/região
     context_hint = ""
     if project:
         context_hint += f"\nThe user is asking about project: {project}."
     if region:
         context_hint += f"\nThe user is in region: {region}."
+    if language:
+        lang_name = "Portuguese" if language == "pt" else "English"
+        context_hint += f"\nYou MUST respond in {lang_name}. This is mandatory."
 
     system_prompt = (
         "You are a customer support assistant for Creative Games Studio (CGS), "
@@ -542,7 +489,8 @@ def _prepare_rag_context(
         "6. NEVER add observations, notes, disclaimers or meta-commentary about "
         "the tickets or your process. Do NOT say which ticket you based your answer on. "
         "Do NOT add sections like 'Observação:', 'O que fazer em seguida?', or similar.\n"
-        "7. Always respond in the same language as the question.\n"
+        "7. ALWAYS respond in the SAME LANGUAGE as the user's FIRST message in the conversation. "
+        "If the user started in English, respond in English even if later messages are in another language.\n"
         "8. If no relevant info is found, just say you couldn't find the information "
         "and suggest contacting support at customerservice@wearecgs.com."
         f"{context_hint}"
@@ -575,34 +523,24 @@ def _prepare_rag_context(
     }
 
 
-# ---------------------------------------------------------------------------
-# Streaming (SSE) com camada de contexto
-# ---------------------------------------------------------------------------
-
-
 def generate_rag_stream(
     question: str,
     max_chunks: int = 5,
     session_id: str = "",
     chat_history: list[dict] | None = None,
 ) -> Generator[str, None, None]:
-    """Gera resposta via Server-Sent Events com análise de contexto."""
     model = Config.get_llm_model()
 
-    # --- Camada 1: Análise de contexto ---
     analysis = analyze_context(question, chat_history)
 
     if analysis.get("status") == "need_info":
-        # Falta contexto — perguntar de volta
         follow_up = analysis.get("follow_up", "Poderia me dar mais detalhes?")
         category = classify_question(question)
 
         yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'need_info': True})}\n\n"
-        # Enviar follow_up como tokens para efeito de streaming
         for word in follow_up.split(" "):
             yield f"data: {json.dumps({'type': 'token', 'content': word + ' '})}\n\n"
 
-        # Salvar no histórico
         chat_id = 0
         if session_id:
             try:
@@ -623,14 +561,19 @@ def generate_rag_stream(
         yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
         return
 
-    # --- Camada 2: Contexto suficiente — buscar e responder ---
     project = analysis.get("project")
     region = analysis.get("region")
+    language = analysis.get("language")
     enhanced_query = analysis.get("enhanced_query", question)
 
     category = classify_question(question)
     ctx = _prepare_rag_context(
-        enhanced_query, max_chunks, project=project, region=region, category=category
+        enhanced_query,
+        max_chunks,
+        project=project,
+        region=region,
+        category=category,
+        language=language,
     )
 
     if ctx.get("empty"):
@@ -740,11 +683,6 @@ def generate_rag_stream(
     yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
 
 
-# ---------------------------------------------------------------------------
-# Resposta síncrona (fallback)
-# ---------------------------------------------------------------------------
-
-
 def generate_rag_response(
     question: str,
     max_chunks: int = 5,
@@ -768,6 +706,7 @@ def generate_rag_response(
 
     project = analysis.get("project")
     region = analysis.get("region")
+    language = analysis.get("language")
     enhanced_query = analysis.get("enhanced_query", question)
 
     ctx = _prepare_rag_context(
@@ -776,6 +715,7 @@ def generate_rag_response(
         project=project,
         region=region,
         category=classify_question(question),
+        language=language,
     )
 
     if ctx.get("empty"):
