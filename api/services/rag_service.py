@@ -105,10 +105,10 @@ Analyze the user's question AND the conversation history to determine if you hav
 You MUST respond in valid JSON only, no markdown, no backticks:
 
 If context is SUFFICIENT:
-{"status": "ready", "project": "detected project or null", "region": "detected region or null", "language": "detected language code (pt or en)", "enhanced_query": "the question enriched with context from history"}
+{"status": "ready", "project": "detected project or null", "region": "detected region or null", "language": "ISO 639-1 language code of the FIRST user message (e.g. pt, en, es, de, fr, it, ja, zh)", "enhanced_query": "the question enriched with context from history"}
 
 If context is MISSING:
-{"status": "need_info", "missing": ["list of what's missing"], "language": "detected language code (pt or en)", "follow_up": "a friendly question in the SAME LANGUAGE as the FIRST user message asking for the missing info"}
+{"status": "need_info", "missing": ["list of what's missing"], "language": "ISO 639-1 language code of the FIRST user message", "follow_up": "a friendly question in the SAME LANGUAGE as the FIRST user message asking for the missing info"}
 
 CRITICAL RULES FOR CLASSIFICATION:
 
@@ -467,8 +467,22 @@ def _prepare_rag_context(
     if region:
         context_hint += f"\nThe user is in region: {region}."
     if language:
-        lang_name = "Portuguese" if language == "pt" else "English"
-        context_hint += f"\nYou MUST respond in {lang_name}. This is mandatory."
+        LANG_NAMES = {
+            "pt": "Portuguese",
+            "en": "English",
+            "es": "Spanish",
+            "de": "German",
+            "fr": "French",
+            "it": "Italian",
+            "ja": "Japanese",
+            "zh": "Chinese",
+            "ko": "Korean",
+            "ru": "Russian",
+            "nl": "Dutch",
+            "pl": "Polish",
+        }
+        lang_name = LANG_NAMES.get(language, language.upper())
+        context_hint += f"\nYou MUST respond in {lang_name}. This is mandatory, even if documents are in other languages."
 
     system_prompt = (
         "You are a friendly, knowledgeable customer support assistant for Creative Games Studio (CGS), "
