@@ -133,8 +133,10 @@ These ask about policies, processes, or how to handle situations in general:
 
 OTHER RULES:
 - If the conversation history already contains project/region info, extract it and set status to "ready".
+- FOLLOW-UP QUESTIONS: If the user asks something short like "and in Europe?", "what about refunds?", "and for Dante?", look at the conversation history to understand the full context. Combine the follow-up with previous context in the enhanced_query. For example, if the user previously asked about Drunagor delivery in Brazil and now asks "and in Europe?", the enhanced_query should be something like "delivery status for Drunagor in Europe".
+- If a follow-up changes the project or region, update those fields accordingly.
 - The follow_up question must be concise, friendly, and list available options.
-- Always respond in the same language as the user's question.
+- Always respond in the same language as the user's FIRST question.
 - Available projects: Drunagor, Dante, ForFun, Oathfall, Magnus, Frosthaven.
 - Available regions: Brasil, Europa, EUA, Ásia, Oceania.
 - When in doubt between personal and generic, choose "need_info" — it's better to ask than to guess wrong."""
@@ -282,9 +284,7 @@ def _sanitize_text(text: str) -> str:
         flags=re.IGNORECASE,
     )
     text = re.sub(
-        r"[A-ZÀ-Ü][a-zà-ü]+\s+(?:referred|encaminhou|me passaram|passaram)",
-        "",
-        text,
+        r"[A-ZÀ-Ü][a-zà-ü]+\s+(?:referred|encaminhou|me passaram|passaram)", "", text
     )
     text = re.sub(r"[A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+){0,2}\s+says:", "", text)
     text = re.sub(
@@ -374,7 +374,6 @@ def _sanitize_text(text: str) -> str:
     text = re.sub(r" {2,}", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     text = text.strip()
-
     return text
 
 
@@ -472,27 +471,29 @@ def _prepare_rag_context(
         context_hint += f"\nYou MUST respond in {lang_name}. This is mandatory."
 
     system_prompt = (
-        "You are a customer support assistant for Creative Games Studio (CGS), "
-        "a board game company. Follow these rules strictly:\n\n"
+        "You are a friendly, knowledgeable customer support assistant for Creative Games Studio (CGS), "
+        "a board game company. You have a warm, conversational tone — like a helpful colleague, not a robot.\n\n"
         "VOICE TONE GUIDELINES (always follow this tone):\n"
         f"{voice_tone_text}\n\n"
-        "RULES:\n"
-        "1. The tickets provided are EXAMPLES of past support conversations. "
-        "Use them as reference to craft a helpful response.\n"
-        "2. Use the voice tone guidelines to shape HOW you respond.\n"
-        "3. The logistics data shows current shipping status. Reference it ONLY if it matches "
-        "the user's project and region. Do NOT mix data from different projects or regions.\n"
-        "4. Be concise, direct and helpful. Go straight to the answer.\n"
-        "5. NEVER include personal data in your response: no names (real or fictional), "
-        "no emails, no addresses, no order IDs, no phone numbers. "
+        "HOW TO BEHAVE:\n"
+        "- Be conversational and natural. Use the person's context from the conversation history.\n"
+        "- If the user asks a follow-up like 'and in Europe?' or 'what about refunds?', "
+        "use the conversation history to understand what they're referring to.\n"
+        "- If you're unsure what the user means, ask a clarifying question naturally. "
+        "For example: 'Just to make sure I help you correctly — are you asking about...?'\n"
+        "- Keep answers concise but helpful. Don't over-explain.\n"
+        "- The tickets provided are EXAMPLES of past support conversations. "
+        "Use them as reference to craft your response, but never mention them.\n"
+        "- The logistics data shows current shipping status. Reference it ONLY if it matches "
+        "the user's project and region.\n\n"
+        "STRICT RULES:\n"
+        "- NEVER include personal data: no names, emails, addresses, order IDs, phone numbers. "
         "Do NOT sign with any name or title.\n"
-        "6. NEVER add observations, notes, disclaimers or meta-commentary about "
-        "the tickets or your process. Do NOT say which ticket you based your answer on. "
-        "Do NOT add sections like 'Observação:', 'O que fazer em seguida?', or similar.\n"
-        "7. ALWAYS respond in the SAME LANGUAGE as the user's FIRST message in the conversation. "
-        "If the user started in English, respond in English even if later messages are in another language.\n"
-        "8. If no relevant info is found, just say you couldn't find the information "
-        "and suggest contacting support at customerservice@wearecgs.com."
+        "- NEVER add meta-commentary about tickets, your process, or sections like 'Observação:'.\n"
+        "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message in the conversation. "
+        "If they started in English, keep English even if later messages are in another language.\n"
+        "- If no relevant info is found, say so naturally and suggest contacting "
+        "customerservice@wearecgs.com."
         f"{context_hint}"
     )
 
@@ -530,7 +531,6 @@ def generate_rag_stream(
     chat_history: list[dict] | None = None,
 ) -> Generator[str, None, None]:
     model = Config.get_llm_model()
-
     analysis = analyze_context(question, chat_history)
 
     if analysis.get("status") == "need_info":
@@ -584,6 +584,15 @@ def generate_rag_stream(
 
     yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': ctx['sources'], 'model': model})}\n\n"
 
+    llm_messages = [{"role": "system", "content": ctx["system_prompt"]}]
+    if chat_history:
+        for msg in chat_history[:-1]:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if content and role in ("user", "assistant"):
+                llm_messages.append({"role": role, "content": content})
+    llm_messages.append({"role": "user", "content": ctx["user_prompt"]})
+
     full_answer = []
     tokens_in = 0
     tokens_out = 0
@@ -593,17 +602,13 @@ def generate_rag_stream(
             client = _get_openai_client()
             stream = client.chat.completions.create(
                 model=model,
-                messages=[
-                    {"role": "system", "content": ctx["system_prompt"]},
-                    {"role": "user", "content": ctx["user_prompt"]},
-                ],
+                messages=llm_messages,
                 temperature=0.7,
                 top_p=0.9,
                 max_tokens=1024,
                 stream=True,
                 stream_options={"include_usage": True},
             )
-
             for chunk in stream:
                 if chunk.choices and chunk.choices[0].delta.content:
                     token = chunk.choices[0].delta.content
@@ -612,16 +617,12 @@ def generate_rag_stream(
                 if chunk.usage:
                     tokens_in = chunk.usage.prompt_tokens
                     tokens_out = chunk.usage.completion_tokens
-
         else:
             resp = requests.post(
                 f"{Config.OLLAMA_HOST.rstrip('/')}/api/chat",
                 json={
                     "model": model,
-                    "messages": [
-                        {"role": "system", "content": ctx["system_prompt"]},
-                        {"role": "user", "content": ctx["user_prompt"]},
-                    ],
+                    "messages": llm_messages,
                     "stream": True,
                     "options": {
                         "temperature": 0.7,
@@ -634,7 +635,6 @@ def generate_rag_stream(
                 stream=True,
             )
             resp.raise_for_status()
-
             for line in resp.iter_lines():
                 if line:
                     data = json.loads(line)
@@ -645,7 +645,6 @@ def generate_rag_stream(
                     if data.get("done"):
                         tokens_in = data.get("prompt_eval_count", 0)
                         tokens_out = data.get("eval_count", 0)
-
     except Exception as e:
         yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
         return
@@ -730,15 +729,21 @@ def generate_rag_response(
 
     model = ctx["model"]
 
+    llm_messages = [{"role": "system", "content": ctx["system_prompt"]}]
+    if chat_history:
+        for msg in chat_history[:-1]:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if content and role in ("user", "assistant"):
+                llm_messages.append({"role": role, "content": content})
+    llm_messages.append({"role": "user", "content": ctx["user_prompt"]})
+
     try:
         if Config.is_openai_llm():
             client = _get_openai_client()
             response = client.chat.completions.create(
                 model=model,
-                messages=[
-                    {"role": "system", "content": ctx["system_prompt"]},
-                    {"role": "user", "content": ctx["user_prompt"]},
-                ],
+                messages=llm_messages,
                 temperature=0.7,
                 top_p=0.9,
                 max_tokens=1024,
@@ -751,10 +756,7 @@ def generate_rag_response(
                 f"{Config.OLLAMA_HOST.rstrip('/')}/api/chat",
                 json={
                     "model": model,
-                    "messages": [
-                        {"role": "system", "content": ctx["system_prompt"]},
-                        {"role": "user", "content": ctx["user_prompt"]},
-                    ],
+                    "messages": llm_messages,
                     "stream": False,
                     "options": {
                         "temperature": 0.7,
