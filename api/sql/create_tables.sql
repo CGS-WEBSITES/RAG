@@ -66,7 +66,7 @@ CREATE INDEX IF NOT EXISTS idx_conhecimento_embedding ON conhecimento_ips USING 
 
 -- Histórico de conversas do RAG
 CREATE TABLE IF NOT EXISTS chat_history (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id VARCHAR(100) NOT NULL,
     question TEXT NOT NULL,
     answer TEXT NOT NULL,
@@ -77,9 +77,15 @@ CREATE TABLE IF NOT EXISTS chat_history (
     tokens_out INTEGER DEFAULT 0,
     sources_count INTEGER DEFAULT 0,
     feedback VARCHAR(10),
+    language VARCHAR(10),
+    satisfaction BOOLEAN DEFAULT NULL,
+    refinement_round INTEGER DEFAULT 0,
+    parent_message_id UUID DEFAULT NULL REFERENCES chat_history (id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_history_session ON chat_history(session_id);
 CREATE INDEX IF NOT EXISTS idx_chat_history_category ON chat_history(category);
 CREATE INDEX IF NOT EXISTS idx_chat_history_created ON chat_history(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_history_parent_message_id ON chat_history(parent_message_id);
+CREATE INDEX IF NOT EXISTS idx_chat_history_satisfaction ON chat_history(satisfaction);
