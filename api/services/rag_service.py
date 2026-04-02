@@ -465,28 +465,39 @@ def _prepare_rag_context(
 
     context = "\n\n".join(context_parts)
 
+    LANG_NAMES = {
+        "pt": "Portuguese",
+        "en": "English",
+        "es": "Spanish",
+        "de": "German",
+        "fr": "French",
+        "it": "Italian",
+        "ja": "Japanese",
+        "zh": "Chinese",
+        "ko": "Korean",
+        "ru": "Russian",
+        "nl": "Dutch",
+        "pl": "Polish",
+    }
+
     context_hint = ""
     if project:
         context_hint += f"\nThe user is asking about project: {project}."
     if region:
         context_hint += f"\nThe user is in region: {region}."
     if language:
-        LANG_NAMES = {
-            "pt": "Portuguese",
-            "en": "English",
-            "es": "Spanish",
-            "de": "German",
-            "fr": "French",
-            "it": "Italian",
-            "ja": "Japanese",
-            "zh": "Chinese",
-            "ko": "Korean",
-            "ru": "Russian",
-            "nl": "Dutch",
-            "pl": "Polish",
-        }
         lang_name = LANG_NAMES.get(language, language.upper())
         context_hint += f"\nYou MUST respond in {lang_name}. This is mandatory, even if documents are in other languages."
+
+    scope_rule = ""
+    if project and region:
+        scope_rule = (
+            f"\n\nSCOPE RESTRICTION (strictly enforced):\n"
+            f"- This conversation is exclusively about project '{project}' in region '{region}'.\n"
+            f"- If the user asks about a DIFFERENT project or region, do NOT answer that question.\n"
+            f"- Instead, politely explain that this chat is scoped to {project} / {region} and ask them "
+            f"to go back to the previous page to select the correct project and region."
+        )
 
     system_prompt = (
         "You are a friendly, knowledgeable customer support assistant for Creative Games Studio (CGS), "
@@ -513,6 +524,7 @@ def _prepare_rag_context(
         "- If no relevant info is found, say so naturally and suggest contacting "
         "customerservice@wearecgs.com."
         f"{context_hint}"
+        f"{scope_rule}"
     )
 
     user_prompt = f"DOCUMENTS:\n{context}\n\nQUESTION: {question}"
