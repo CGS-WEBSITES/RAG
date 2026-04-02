@@ -13,6 +13,7 @@ from api.database import init_pool
 from api.resources.rag import ns as rag_ns
 from api.resources.imports import ns as imports_ns
 from api.resources.history import ns as history_ns
+from api.resources.health import ns as health_ns
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +52,7 @@ def create_app() -> Flask:
     api.add_namespace(rag_ns, path="/api/rag")
     api.add_namespace(imports_ns, path="/api/import")
     api.add_namespace(history_ns, path="/api/history")
+    api.add_namespace(health_ns, path="/health")
 
     with app.app_context():
         try:
