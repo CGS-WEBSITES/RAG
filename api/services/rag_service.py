@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 MAX_CHUNK_LENGTH = 500
 RELEVANCE_THRESHOLD = 1.5
+MAX_REFINEMENT_ROUNDS = 2
+SUPPORT_URL = "https://newaccount1620866477944.freshdesk.com/support/tickets/new"
 
 CATEGORIES = [
     "atraso_entrega",
@@ -417,10 +419,12 @@ def _prepare_rag_context(
         if region and logistics_chunks:
             region_aliases = {
                 "brazil": "brasil",
+                "brasilien": "brasil",
                 "eua": "eua",
                 "usa": "eua",
                 "us": "eua",
                 "europe": "europa",
+                "europa": "europa",
                 "asia": "ásia",
                 "oceania": "oceania",
             }
@@ -461,28 +465,39 @@ def _prepare_rag_context(
 
     context = "\n\n".join(context_parts)
 
+    LANG_NAMES = {
+        "pt": "Portuguese",
+        "en": "English",
+        "es": "Spanish",
+        "de": "German",
+        "fr": "French",
+        "it": "Italian",
+        "ja": "Japanese",
+        "zh": "Chinese",
+        "ko": "Korean",
+        "ru": "Russian",
+        "nl": "Dutch",
+        "pl": "Polish",
+    }
+
     context_hint = ""
     if project:
         context_hint += f"\nThe user is asking about project: {project}."
     if region:
         context_hint += f"\nThe user is in region: {region}."
     if language:
-        LANG_NAMES = {
-            "pt": "Portuguese",
-            "en": "English",
-            "es": "Spanish",
-            "de": "German",
-            "fr": "French",
-            "it": "Italian",
-            "ja": "Japanese",
-            "zh": "Chinese",
-            "ko": "Korean",
-            "ru": "Russian",
-            "nl": "Dutch",
-            "pl": "Polish",
-        }
         lang_name = LANG_NAMES.get(language, language.upper())
         context_hint += f"\nYou MUST respond in {lang_name}. This is mandatory, even if documents are in other languages."
+
+    scope_rule = ""
+    if project and region:
+        scope_rule = (
+            f"\n\nSCOPE RESTRICTION (strictly enforced):\n"
+            f"- This conversation is exclusively about project '{project}' in region '{region}'.\n"
+            f"- If the user asks about a DIFFERENT project or region, do NOT answer that question.\n"
+            f"- Instead, politely explain that this chat is scoped to {project} / {region} and ask them "
+            f"to go back to the previous page to select the correct project and region."
+        )
 
     system_prompt = (
         "You are a friendly, knowledgeable customer support assistant for Creative Games Studio (CGS), "
@@ -509,6 +524,7 @@ def _prepare_rag_context(
         "- If no relevant info is found, say so naturally and suggest contacting "
         "customerservice@wearecgs.com."
         f"{context_hint}"
+        f"{scope_rule}"
     )
 
     user_prompt = f"DOCUMENTS:\n{context}\n\nQUESTION: {question}"
@@ -538,24 +554,178 @@ def _prepare_rag_context(
     }
 
 
+def _build_refinement_system_prompt(
+    original_question: str,
+    original_answer: str,
+    language: str | None,
+    refinement_round: int = 1,
+) -> str:
+    LANG_NAMES = {
+        "pt": "Portuguese",
+        "en": "English",
+        "es": "Spanish",
+        "de": "German",
+        "fr": "French",
+        "it": "Italian",
+        "ja": "Japanese",
+        "zh": "Chinese",
+        "ko": "Korean",
+        "ru": "Russian",
+        "nl": "Dutch",
+        "pl": "Polish",
+    }
+    lang_name = LANG_NAMES.get(language or "en", "English")
+
+    is_last_attempt = refinement_round >= MAX_REFINEMENT_ROUNDS
+    escalation_instruction = (
+        f"\nIMPORTANT: This is the final refinement attempt. If you still cannot fully resolve "
+        f"the issue, acknowledge it honestly and direct the user to open a support ticket at: {SUPPORT_URL}"
+        if is_last_attempt
+        else ""
+    )
+
+    return (
+        "You are a friendly customer support assistant for Creative Games Studio (CGS), a board game company.\n\n"
+        "The user was NOT satisfied with your previous answer. Your goal is to understand exactly "
+        "what was missing or incorrect and provide a better, more complete response.\n\n"
+        f"ORIGINAL QUESTION: {original_question}\n"
+        f"PREVIOUS ANSWER: {original_answer}\n\n"
+        "REFINEMENT RULES:\n"
+        "- Acknowledge briefly that you want to help better — do NOT apologize excessively.\n"
+        "- Ask targeted, specific questions to understand what was missing. Ask at most TWO at a time.\n"
+        "- If the user has already explained what was missing, provide a clearly improved answer directly.\n"
+        "- Never ask the user to repeat information they already provided.\n"
+        "- Never mention tickets, documents, or internal processes."
+        f"{escalation_instruction}\n\n"
+        "STRICT RULES:\n"
+        "- NEVER include personal data.\n"
+        f"- ALWAYS respond in {lang_name}. This is mandatory."
+    )
+
+
 def generate_rag_stream(
     question: str,
     max_chunks: int = 5,
     session_id: str = "",
     chat_history: list[dict] | None = None,
+    language: str | None = None,
+    refinement_round: int = 0,
+    parent_message_id: str | None = None,
+    original_question: str | None = None,
+    original_answer: str | None = None,
 ) -> Generator[str, None, None]:
     model = Config.get_llm_model()
+
+    is_refinement = refinement_round > 0 and original_question and original_answer
+
+    if is_refinement:
+        detected_language = language
+        category = classify_question(original_question)
+
+        system_prompt = _build_refinement_system_prompt(
+            original_question, original_answer, detected_language, refinement_round
+        )
+
+        llm_messages = [{"role": "system", "content": system_prompt}]
+        if chat_history:
+            for msg in chat_history[-6:]:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if content and role in ("user", "assistant"):
+                    llm_messages.append({"role": role, "content": content})
+        llm_messages.append({"role": "user", "content": question})
+
+        yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'language': detected_language, 'refinement_round': refinement_round})}\n\n"
+
+        full_answer = []
+        tokens_in = 0
+        tokens_out = 0
+
+        try:
+            if Config.is_openai_llm():
+                client = _get_openai_client()
+                stream = client.chat.completions.create(
+                    model=model,
+                    messages=llm_messages,
+                    temperature=0.7,
+                    max_tokens=1024,
+                    stream=True,
+                    stream_options={"include_usage": True},
+                )
+                for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        token = chunk.choices[0].delta.content
+                        full_answer.append(token)
+                        yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+                    if chunk.usage:
+                        tokens_in = chunk.usage.prompt_tokens
+                        tokens_out = chunk.usage.completion_tokens
+            else:
+                resp = requests.post(
+                    f"{Config.OLLAMA_HOST.rstrip('/')}/api/chat",
+                    json={
+                        "model": model,
+                        "messages": llm_messages,
+                        "stream": True,
+                        "options": {
+                            "temperature": 0.7,
+                            "num_predict": 1024,
+                            "num_ctx": 4096,
+                        },
+                    },
+                    timeout=300,
+                    stream=True,
+                )
+                resp.raise_for_status()
+                for line in resp.iter_lines():
+                    if line:
+                        data = json.loads(line)
+                        if data.get("message", {}).get("content"):
+                            token = data["message"]["content"]
+                            full_answer.append(token)
+                            yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+                        if data.get("done"):
+                            tokens_in = data.get("prompt_eval_count", 0)
+                            tokens_out = data.get("eval_count", 0)
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            return
+
+        answer = "".join(full_answer)
+        chat_id = ""
+        if session_id:
+            try:
+                chat_id = save_chat(
+                    session_id=session_id,
+                    question=question,
+                    answer=answer,
+                    category=category,
+                    model=model,
+                    provider=Config.LLM_PROVIDER,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    sources_count=0,
+                    refinement_round=refinement_round,
+                    parent_message_id=parent_message_id,
+                )
+            except Exception as e:
+                logger.warning("Failed to save refinement chat: %s", e)
+
+        yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
+        return
+
     analysis = analyze_context(question, chat_history)
+    detected_language = language or analysis.get("language")
 
     if analysis.get("status") == "need_info":
-        follow_up = analysis.get("follow_up", "Poderia me dar mais detalhes?")
+        follow_up = analysis.get("follow_up", "Could you provide more details?")
         category = classify_question(question)
 
-        yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'need_info': True})}\n\n"
+        yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'need_info': True, 'language': detected_language})}\n\n"
         for word in follow_up.split(" "):
             yield f"data: {json.dumps({'type': 'token', 'content': word + ' '})}\n\n"
 
-        chat_id = 0
+        chat_id = ""
         if session_id:
             try:
                 chat_id = save_chat(
@@ -577,7 +747,6 @@ def generate_rag_stream(
 
     project = analysis.get("project")
     region = analysis.get("region")
-    language = analysis.get("language")
     enhanced_query = analysis.get("enhanced_query", question)
 
     category = classify_question(question)
@@ -587,16 +756,16 @@ def generate_rag_stream(
         project=project,
         region=region,
         category=category,
-        language=language,
+        language=detected_language,
     )
 
     if ctx.get("empty"):
-        yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model})}\n\n"
-        yield f"data: {json.dumps({'type': 'token', 'content': 'Não encontrei documentos relevantes na base de conhecimento.'})}\n\n"
-        yield f"data: {json.dumps({'type': 'done', 'chat_id': 0})}\n\n"
+        yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'language': detected_language})}\n\n"
+        yield f"data: {json.dumps({'type': 'token', 'content': 'No relevant documents found in the knowledge base.'})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'chat_id': ''})}\n\n"
         return
 
-    yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': ctx['sources'], 'model': model})}\n\n"
+    yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': ctx['sources'], 'model': model, 'language': detected_language})}\n\n"
 
     llm_messages = [{"role": "system", "content": ctx["system_prompt"]}]
     if chat_history:
@@ -664,7 +833,7 @@ def generate_rag_stream(
         return
 
     answer = "".join(full_answer)
-    chat_id = 0
+    chat_id = ""
     if session_id:
         try:
             chat_id = save_chat(
@@ -683,12 +852,13 @@ def generate_rag_stream(
 
     logger.info(
         "RAG stream completed: provider=%s, question='%s', category=%s, "
-        "project=%s, region=%s, tokens_in=%d, tokens_out=%d",
+        "project=%s, region=%s, language=%s, tokens_in=%d, tokens_out=%d",
         Config.LLM_PROVIDER,
         question[:50],
         category,
         project,
         region,
+        detected_language,
         tokens_in,
         tokens_out,
     )
@@ -701,11 +871,102 @@ def generate_rag_response(
     max_chunks: int = 5,
     session_id: str = "",
     chat_history: list[dict] | None = None,
+    language: str | None = None,
+    refinement_round: int = 0,
+    parent_message_id: str | None = None,
+    original_question: str | None = None,
+    original_answer: str | None = None,
 ) -> dict[str, Any]:
+    is_refinement = refinement_round > 0 and original_question and original_answer
+
+    if is_refinement:
+        detected_language = language
+        category = classify_question(original_question)
+        model = Config.get_llm_model()
+
+        system_prompt = _build_refinement_system_prompt(
+            original_question, original_answer, detected_language, refinement_round
+        )
+
+        llm_messages = [{"role": "system", "content": system_prompt}]
+        if chat_history:
+            for msg in chat_history[-6:]:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if content and role in ("user", "assistant"):
+                    llm_messages.append({"role": role, "content": content})
+        llm_messages.append({"role": "user", "content": question})
+
+        try:
+            if Config.is_openai_llm():
+                client = _get_openai_client()
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=llm_messages,
+                    temperature=0.7,
+                    max_tokens=1024,
+                )
+                answer = response.choices[0].message.content.strip()
+                tokens_in = response.usage.prompt_tokens
+                tokens_out = response.usage.completion_tokens
+            else:
+                resp = requests.post(
+                    f"{Config.OLLAMA_HOST.rstrip('/')}/api/chat",
+                    json={
+                        "model": model,
+                        "messages": llm_messages,
+                        "stream": False,
+                        "options": {
+                            "temperature": 0.7,
+                            "num_predict": 1024,
+                            "num_ctx": 4096,
+                        },
+                    },
+                    timeout=300,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                answer = data.get("message", {}).get("content", "").strip()
+                tokens_in = data.get("prompt_eval_count", 0)
+                tokens_out = data.get("eval_count", 0)
+        except Exception as e:
+            raise RuntimeError(f"Error generating refinement response: {e}")
+
+        chat_id = ""
+        if session_id:
+            try:
+                chat_id = save_chat(
+                    session_id=session_id,
+                    question=question,
+                    answer=answer,
+                    category=category,
+                    model=model,
+                    provider=Config.LLM_PROVIDER,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    sources_count=0,
+                    refinement_round=refinement_round,
+                    parent_message_id=parent_message_id,
+                )
+            except Exception as e:
+                logger.warning("Failed to save refinement chat: %s", e)
+
+        return {
+            "question": question,
+            "answer": answer,
+            "sources": {"tickets": [], "logistics": []},
+            "model": model,
+            "category": category,
+            "chat_id": chat_id,
+            "language": detected_language,
+            "refinement_round": refinement_round,
+        }
+
     analysis = analyze_context(question, chat_history)
+    detected_language = language or analysis.get("language")
 
     if analysis.get("status") == "need_info":
-        follow_up = analysis.get("follow_up", "Poderia me dar mais detalhes?")
+        follow_up = analysis.get("follow_up", "Could you provide more details?")
         category = classify_question(question)
         return {
             "question": question,
@@ -713,13 +974,13 @@ def generate_rag_response(
             "sources": {"tickets": [], "logistics": []},
             "model": Config.get_llm_model(),
             "category": category,
-            "chat_id": 0,
+            "chat_id": "",
             "need_info": True,
+            "language": detected_language,
         }
 
     project = analysis.get("project")
     region = analysis.get("region")
-    language = analysis.get("language")
     enhanced_query = analysis.get("enhanced_query", question)
 
     ctx = _prepare_rag_context(
@@ -728,17 +989,18 @@ def generate_rag_response(
         project=project,
         region=region,
         category=classify_question(question),
-        language=language,
+        language=detected_language,
     )
 
     if ctx.get("empty"):
         return {
             "question": question,
-            "answer": "Não encontrei documentos relevantes na base de conhecimento.",
+            "answer": "No relevant documents found in the knowledge base.",
             "sources": {"tickets": [], "logistics": []},
             "model": ctx["model"],
             "category": "outro",
-            "chat_id": 0,
+            "chat_id": "",
+            "language": detected_language,
         }
 
     model = ctx["model"]
@@ -787,11 +1049,11 @@ def generate_rag_response(
             tokens_in = data.get("prompt_eval_count", 0)
             tokens_out = data.get("eval_count", 0)
     except Exception as e:
-        raise RuntimeError(f"Erro ao gerar resposta via {Config.LLM_PROVIDER}: {e}")
+        raise RuntimeError(f"Error generating response via {Config.LLM_PROVIDER}: {e}")
 
     category = classify_question(question)
 
-    chat_id = 0
+    chat_id = ""
     if session_id:
         try:
             chat_id = save_chat(
@@ -815,4 +1077,5 @@ def generate_rag_response(
         "model": model,
         "category": category,
         "chat_id": chat_id,
+        "language": detected_language,
     }

@@ -1,72 +1,41 @@
 from flask import Response, request
 from flask_restx import Namespace, Resource, fields
 
+from api.services.history_service import update_satisfaction
 from api.services.rag_service import generate_rag_response, generate_rag_stream
 
 ns = Namespace("rag", description="RAG - Perguntas e respostas com IA")
 
-rag_input = ns.model(
-    "RAGInput",
+ticket_input = ns.model(
+    "TicketInput",
     {
-        "question": fields.String(
-            required=True,
-            description="Pergunta em linguagem natural",
-            example="Meu pedido está atrasado, o que eu faço?",
+        "question": fields.String(required=True, description="Pergunta do usuário"),
+        "max_chunks": fields.Integer(default=5, description="Máximo de chunks"),
+        "session_id": fields.String(default="", description="ID da sessão"),
+        "chat_history": fields.List(fields.Raw, default=[], description="Histórico"),
+        "language": fields.String(
+            default=None, description="Idioma detectado pelo frontend"
         ),
-        "max_chunks": fields.Integer(
-            default=5,
-            description="Máximo de tickets de contexto (1-10)",
-            example=5,
+        "refinement_round": fields.Integer(
+            default=0, description="Rodada de refinamento"
         ),
-        "session_id": fields.String(
-            default="",
-            description="ID da sessão para histórico",
+        "parent_message_id": fields.String(
+            default=None, description="ID da mensagem original"
         ),
-        "chat_history": fields.List(
-            fields.Raw,
-            description="Histórico da conversa [{role, content}]",
-            default=[],
+        "original_question": fields.String(
+            default=None, description="Pergunta original não satisfeita"
+        ),
+        "original_answer": fields.String(
+            default=None, description="Resposta original não satisfeita"
         ),
     },
 )
 
-ticket_source = ns.model(
-    "TicketSource",
+satisfaction_input = ns.model(
+    "SatisfactionInput",
     {
-        "id": fields.Integer,
-        "title": fields.String,
-        "chunk": fields.String,
-        "distance": fields.Float,
-    },
-)
-
-logistics_source = ns.model(
-    "LogisticsSource",
-    {
-        "id": fields.Integer,
-        "title": fields.String,
-        "chunk": fields.String,
-        "distance": fields.Float,
-    },
-)
-
-sources_model = ns.model(
-    "Sources",
-    {
-        "tickets": fields.List(fields.Nested(ticket_source)),
-        "logistics": fields.List(fields.Nested(logistics_source)),
-    },
-)
-
-rag_output = ns.model(
-    "RAGOutput",
-    {
-        "question": fields.String(description="Pergunta original"),
-        "answer": fields.String(description="Resposta gerada pelo LLM"),
-        "sources": fields.Nested(sources_model),
-        "model": fields.String(description="Modelo LLM utilizado"),
-        "category": fields.String(description="Classificação automática"),
-        "chat_id": fields.Integer(description="ID no histórico"),
+        "chat_id": fields.String(required=True, description="ID da mensagem"),
+        "satisfied": fields.Boolean(required=True, description="Usuário satisfeito?"),
     },
 )
 
@@ -74,49 +43,59 @@ rag_output = ns.model(
 @ns.route("/tickets")
 class RAGTickets(Resource):
     @ns.doc("rag_tickets")
-    @ns.expect(rag_input, validate=True)
-    @ns.marshal_with(rag_output)
+    @ns.expect(ticket_input)
     def post(self):
-        data = ns.payload
-        question = data["question"]
-        max_chunks = min(max(data.get("max_chunks", 5), 1), 10)
-        session_id = data.get("session_id", "")
-        chat_history = data.get("chat_history", [])
-
-        try:
-            return generate_rag_response(
-                question=question,
-                max_chunks=max_chunks,
-                session_id=session_id,
-                chat_history=chat_history,
-            )
-        except ConnectionError as e:
-            ns.abort(503, str(e))
-        except RuntimeError as e:
-            ns.abort(500, str(e))
-        except Exception as e:
-            ns.abort(500, f"Erro inesperado: {str(e)}")
-
-
-@ns.route("/tickets/stream")
-class RAGTicketsStream(Resource):
-    @ns.doc("rag_tickets_stream")
-    def post(self):
+        """RAG unificado (síncrono)"""
         data = request.get_json(force=True)
         question = (data.get("question") or "").strip()
         if not question:
             return {"message": "question is required"}, 400
 
         max_chunks = min(max(data.get("max_chunks", 5), 1), 10)
-        session_id = data.get("session_id", "")
-        chat_history = data.get("chat_history", [])
+
+        try:
+            return generate_rag_response(
+                question=question,
+                max_chunks=max_chunks,
+                session_id=data.get("session_id", ""),
+                chat_history=data.get("chat_history", []),
+                language=data.get("language"),
+                refinement_round=data.get("refinement_round", 0),
+                parent_message_id=data.get("parent_message_id"),
+                original_question=data.get("original_question"),
+                original_answer=data.get("original_answer"),
+            )
+        except ConnectionError as e:
+            ns.abort(503, str(e))
+        except RuntimeError as e:
+            ns.abort(500, str(e))
+        except Exception as e:
+            ns.abort(500, f"Unexpected error: {str(e)}")
+
+
+@ns.route("/tickets/stream")
+class RAGTicketsStream(Resource):
+    @ns.doc("rag_tickets_stream")
+    def post(self):
+        """RAG unificado (streaming via SSE)"""
+        data = request.get_json(force=True)
+        question = (data.get("question") or "").strip()
+        if not question:
+            return {"message": "question is required"}, 400
+
+        max_chunks = min(max(data.get("max_chunks", 5), 1), 10)
 
         return Response(
             generate_rag_stream(
                 question=question,
                 max_chunks=max_chunks,
-                session_id=session_id,
-                chat_history=chat_history,
+                session_id=data.get("session_id", ""),
+                chat_history=data.get("chat_history", []),
+                language=data.get("language"),
+                refinement_round=data.get("refinement_round", 0),
+                parent_message_id=data.get("parent_message_id"),
+                original_question=data.get("original_question"),
+                original_answer=data.get("original_answer"),
             ),
             mimetype="text/event-stream",
             headers={
@@ -124,3 +103,25 @@ class RAGTicketsStream(Resource):
                 "X-Accel-Buffering": "no",
             },
         )
+
+
+@ns.route("/satisfaction")
+class RAGSatisfaction(Resource):
+    @ns.doc("rag_satisfaction")
+    @ns.expect(satisfaction_input)
+    def post(self):
+        """Registra satisfação do usuário com a resposta"""
+        data = request.get_json(force=True)
+        chat_id = (data.get("chat_id") or "").strip()
+        satisfied = data.get("satisfied")
+
+        if not chat_id:
+            return {"message": "chat_id is required"}, 400
+        if satisfied is None:
+            return {"message": "satisfied is required"}, 400
+
+        updated = update_satisfaction(chat_id, bool(satisfied))
+        if not updated:
+            return {"message": "chat message not found"}, 404
+
+        return {"status": "ok"}, 200
