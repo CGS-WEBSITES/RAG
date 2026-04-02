@@ -87,5 +87,4 @@ CREATE TABLE IF NOT EXISTS chat_history (
 CREATE INDEX IF NOT EXISTS idx_chat_history_session ON chat_history(session_id);
 CREATE INDEX IF NOT EXISTS idx_chat_history_category ON chat_history(category);
 CREATE INDEX IF NOT EXISTS idx_chat_history_created ON chat_history(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_chat_history_parent_message_id ON chat_history(parent_message_id);
 CREATE INDEX IF NOT EXISTS idx_chat_history_satisfaction ON chat_history(satisfaction);
