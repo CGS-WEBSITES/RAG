@@ -39,5 +39,12 @@ END
 " 2>&1 || echo "    Erro ao configurar vectorizer, continuando..."
 echo "==> Populando dados iniciais..."
 python3 -m scripts.seed_data
-echo "==> Iniciando API Flask..."
-exec python3 -m api.app
+echo "==> Iniciando API com Gunicorn + Eventlet..."
+exec gunicorn \
+    --bind 0.0.0.0:5000 \
+    --worker-class eventlet \
+    --workers 1 \
+    --worker-connections 100 \
+    --timeout 600 \
+    --log-level info \
+    "api.app:create_app()"

@@ -8,3 +8,5 @@ openai
 pgai
 pandas
 openpyxl
+gunicorn
+eventlet
