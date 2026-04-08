@@ -10,6 +10,7 @@ from openai import OpenAI
 from api.config import Config
 from api.services.search_service import semantic_search, get_all_by_source
 from api.services.history_service import save_chat
+from api.services.character_prompts import get_character_prompt, get_character_name
 
 logger = logging.getLogger(__name__)
 
@@ -500,33 +501,54 @@ def _prepare_rag_context(
             f"to go back to the previous page to select the correct project and region."
         )
 
-    system_prompt = (
-        "You are a friendly, knowledgeable customer support assistant for Creative Games Studio (CGS), "
-        "a board game company. You have a warm, conversational tone — like a helpful colleague, not a robot.\n\n"
-        "VOICE TONE GUIDELINES (always follow this tone):\n"
-        f"{voice_tone_text}\n\n"
-        "HOW TO BEHAVE:\n"
-        "- Be conversational and natural. Use the person's context from the conversation history.\n"
-        "- If the user asks a follow-up like 'and in Europe?' or 'what about refunds?', "
-        "use the conversation history to understand what they're referring to.\n"
-        "- If you're unsure what the user means, ask a clarifying question naturally. "
-        "For example: 'Just to make sure I help you correctly — are you asking about...?'\n"
-        "- Keep answers concise but helpful. Don't over-explain.\n"
-        "- The tickets provided are EXAMPLES of past support conversations. "
-        "Use them as reference to craft your response, but never mention them.\n"
-        "- The logistics data shows current shipping status. Reference it ONLY if it matches "
-        "the user's project and region.\n\n"
-        "STRICT RULES:\n"
-        "- NEVER include personal data: no names, emails, addresses, order IDs, phone numbers. "
-        "Do NOT sign with any name or title.\n"
-        "- NEVER add meta-commentary about tickets, your process, or sections like 'Observação:'.\n"
-        "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message in the conversation. "
-        "If they started in English, keep English even if later messages are in another language.\n"
-        "- If no relevant info is found, say so naturally and suggest contacting "
-        "customerservice@wearecgs.com."
-        f"{context_hint}"
-        f"{scope_rule}"
-    )
+    character_prompt = get_character_prompt(project)
+
+    if character_prompt:
+        system_prompt = (
+            f"{character_prompt}\n\n"
+            "SUPPORT KNOWLEDGE:\n"
+            "- You have access to past support ticket examples and logistics data. "
+            "Use them as reference to answer the user's actual problem — but translate everything "
+            "into your character's language and world.\n"
+            "- Never mention 'tickets', 'documents', 'database' or any technical term.\n\n"
+            "STRICT RULES:\n"
+            "- NEVER include personal data: no names, emails, addresses, order IDs, phone numbers.\n"
+            "- NEVER break character under any circumstance.\n"
+            "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message.\n"
+            "- If no relevant info is found, say so in character and suggest contacting "
+            "customerservice@wearecgs.com — but phrase it as your character would.\n"
+            "- If the user asks about a topic outside this project's scope, redirect them "
+            "in character to go back and select the correct project."
+            f"{context_hint}"
+        )
+    else:
+        system_prompt = (
+            "You are a friendly, knowledgeable customer support assistant for Creative Games Studio (CGS), "
+            "a board game company. You have a warm, conversational tone — like a helpful colleague, not a robot.\n\n"
+            "VOICE TONE GUIDELINES (always follow this tone):\n"
+            f"{voice_tone_text}\n\n"
+            "HOW TO BEHAVE:\n"
+            "- Be conversational and natural. Use the person's context from the conversation history.\n"
+            "- If the user asks a follow-up like 'and in Europe?' or 'what about refunds?', "
+            "use the conversation history to understand what they're referring to.\n"
+            "- If you're unsure what the user means, ask a clarifying question naturally. "
+            "For example: 'Just to make sure I help you correctly — are you asking about...?'\n"
+            "- Keep answers concise but helpful. Don't over-explain.\n"
+            "- The tickets provided are EXAMPLES of past support conversations. "
+            "Use them as reference to craft your response, but never mention them.\n"
+            "- The logistics data shows current shipping status. Reference it ONLY if it matches "
+            "the user's project and region.\n\n"
+            "STRICT RULES:\n"
+            "- NEVER include personal data: no names, emails, addresses, order IDs, phone numbers. "
+            "Do NOT sign with any name or title.\n"
+            "- NEVER add meta-commentary about tickets, your process, or sections like 'Observação:'.\n"
+            "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message in the conversation. "
+            "If they started in English, keep English even if later messages are in another language.\n"
+            "- If no relevant info is found, say so naturally and suggest contacting "
+            "customerservice@wearecgs.com."
+            f"{context_hint}"
+            f"{scope_rule}"
+        )
 
     user_prompt = f"DOCUMENTS:\n{context}\n\nQUESTION: {question}"
 
@@ -562,18 +584,9 @@ def _build_refinement_system_prompt(
     refinement_round: int = 1,
 ) -> str:
     LANG_NAMES = {
-        "pt": "Portuguese",
-        "en": "English",
-        "es": "Spanish",
-        "de": "German",
-        "fr": "French",
-        "it": "Italian",
-        "ja": "Japanese",
-        "zh": "Chinese",
-        "ko": "Korean",
-        "ru": "Russian",
-        "nl": "Dutch",
-        "pl": "Polish",
+        "pt": "Portuguese", "en": "English", "es": "Spanish", "de": "German",
+        "fr": "French", "it": "Italian", "ja": "Japanese", "zh": "Chinese",
+        "ko": "Korean", "ru": "Russian", "nl": "Dutch", "pl": "Polish",
     }
     lang_name = LANG_NAMES.get(language or "en", "English")
 
@@ -610,6 +623,8 @@ def generate_rag_stream(
     session_id: str = "",
     chat_history: list[dict] | None = None,
     language: str | None = None,
+    project: str | None = None,
+    region: str | None = None,
     refinement_round: int = 0,
     parent_message_id: str | None = None,
     original_question: str | None = None,
@@ -668,11 +683,7 @@ def generate_rag_stream(
                         "model": model,
                         "messages": llm_messages,
                         "stream": True,
-                        "options": {
-                            "temperature": 0.7,
-                            "num_predict": 1024,
-                            "num_ctx": 4096,
-                        },
+                        "options": {"temperature": 0.7, "num_predict": 1024, "num_ctx": 4096},
                     },
                     timeout=300,
                     stream=True,
@@ -715,56 +726,59 @@ def generate_rag_stream(
         yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
         return
 
-    # Parallelize analyze_context and classify_question to reduce latency
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future_analysis = executor.submit(analyze_context, question, chat_history)
-        future_category = executor.submit(classify_question, question)
-        analysis = future_analysis.result()
-        category = future_category.result()
+    # If project and region are already provided, skip context analysis entirely
+    _project = project
+    _region = region
+    if _project and _region:
+        category = classify_question(question)
+        detected_language = language
+        enhanced_query = question
+    else:
+        # Parallelize analyze_context and classify_question to reduce latency
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_analysis = executor.submit(analyze_context, question, chat_history)
+            future_category = executor.submit(classify_question, question)
+            analysis = future_analysis.result()
+            category = future_category.result()
 
-    detected_language = language or analysis.get("language")
+        detected_language = language or analysis.get("language")
 
-    if analysis.get("status") == "need_info":
-        follow_up = analysis.get("follow_up", "Could you provide more details?")
+        if analysis.get("status") == "need_info":
+            follow_up = analysis.get("follow_up", "Could you provide more details?")
 
-        yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'need_info': True, 'language': detected_language})}\n\n"
-        for word in follow_up.split(" "):
-            yield f"data: {json.dumps({'type': 'token', 'content': word + ' '})}\n\n"
+            yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'need_info': True, 'language': detected_language})}\n\n"
+            for word in follow_up.split(" "):
+                yield f"data: {json.dumps({'type': 'token', 'content': word + ' '})}\n\n"
 
-        chat_id = ""
-        if session_id:
-            try:
-                chat_id = save_chat(
-                    session_id=session_id,
-                    question=question,
-                    answer=follow_up,
-                    category=category,
-                    model=model,
-                    provider=Config.LLM_PROVIDER,
-                    tokens_in=0,
-                    tokens_out=0,
-                    sources_count=0,
-                )
-            except Exception as e:
-                logger.warning("Failed to save chat history: %s", e)
+            chat_id = ""
+            if session_id:
+                try:
+                    chat_id = save_chat(
+                        session_id=session_id,
+                        question=question,
+                        answer=follow_up,
+                        category=category,
+                        model=model,
+                        provider=Config.LLM_PROVIDER,
+                        tokens_in=0,
+                        tokens_out=0,
+                        sources_count=0,
+                    )
+                except Exception as e:
+                    logger.warning("Failed to save chat history: %s", e)
 
-        yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
-        return
+            yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
+            return
 
-    project = analysis.get("project")
-    region = analysis.get("region")
-    enhanced_query = analysis.get("enhanced_query", question)
+        _project = analysis.get("project")
+        _region = analysis.get("region")
+        enhanced_query = analysis.get("enhanced_query", question)
 
     # Parallelize semantic_search and category classification
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_ctx = executor.submit(
             _prepare_rag_context,
-            enhanced_query,
-            max_chunks,
-            project,
-            region,
-            category,
-            detected_language,
+            enhanced_query, max_chunks, _project, _region, category, detected_language
         )
         ctx = future_ctx.result()
 
@@ -881,6 +895,8 @@ def generate_rag_response(
     session_id: str = "",
     chat_history: list[dict] | None = None,
     language: str | None = None,
+    project: str | None = None,
+    region: str | None = None,
     refinement_round: int = 0,
     parent_message_id: str | None = None,
     original_question: str | None = None,
@@ -925,11 +941,7 @@ def generate_rag_response(
                         "model": model,
                         "messages": llm_messages,
                         "stream": False,
-                        "options": {
-                            "temperature": 0.7,
-                            "num_predict": 1024,
-                            "num_ctx": 4096,
-                        },
+                        "options": {"temperature": 0.7, "num_predict": 1024, "num_ctx": 4096},
                     },
                     timeout=300,
                 )
@@ -971,36 +983,44 @@ def generate_rag_response(
             "refinement_round": refinement_round,
         }
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future_analysis = executor.submit(analyze_context, question, chat_history)
-        future_category = executor.submit(classify_question, question)
-        analysis = future_analysis.result()
-        category = future_category.result()
+    # If project and region are already provided, skip context analysis entirely
+    _project = project
+    _region = region
+    if _project and _region:
+        category = classify_question(question)
+        detected_language = language
+        enhanced_query = question
+    else:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_analysis = executor.submit(analyze_context, question, chat_history)
+            future_category = executor.submit(classify_question, question)
+            analysis = future_analysis.result()
+            category = future_category.result()
 
-    detected_language = language or analysis.get("language")
+        detected_language = language or analysis.get("language")
 
-    if analysis.get("status") == "need_info":
-        follow_up = analysis.get("follow_up", "Could you provide more details?")
-        return {
-            "question": question,
-            "answer": follow_up,
-            "sources": {"tickets": [], "logistics": []},
-            "model": Config.get_llm_model(),
-            "category": category,
-            "chat_id": "",
-            "need_info": True,
-            "language": detected_language,
-        }
+        if analysis.get("status") == "need_info":
+            follow_up = analysis.get("follow_up", "Could you provide more details?")
+            return {
+                "question": question,
+                "answer": follow_up,
+                "sources": {"tickets": [], "logistics": []},
+                "model": Config.get_llm_model(),
+                "category": category,
+                "chat_id": "",
+                "need_info": True,
+                "language": detected_language,
+            }
 
-    project = analysis.get("project")
-    region = analysis.get("region")
-    enhanced_query = analysis.get("enhanced_query", question)
+        _project = analysis.get("project")
+        _region = analysis.get("region")
+        enhanced_query = analysis.get("enhanced_query", question)
 
     ctx = _prepare_rag_context(
         enhanced_query,
         max_chunks,
-        project=project,
-        region=region,
+        project=_project,
+        region=_region,
         category=category,
         language=detected_language,
     )
