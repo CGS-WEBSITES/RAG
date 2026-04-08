@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Generator
 
 import requests
@@ -714,12 +715,17 @@ def generate_rag_stream(
         yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
         return
 
-    analysis = analyze_context(question, chat_history)
+    # Parallelize analyze_context and classify_question to reduce latency
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_analysis = executor.submit(analyze_context, question, chat_history)
+        future_category = executor.submit(classify_question, question)
+        analysis = future_analysis.result()
+        category = future_category.result()
+
     detected_language = language or analysis.get("language")
 
     if analysis.get("status") == "need_info":
         follow_up = analysis.get("follow_up", "Could you provide more details?")
-        category = classify_question(question)
 
         yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'need_info': True, 'language': detected_language})}\n\n"
         for word in follow_up.split(" "):
@@ -749,15 +755,18 @@ def generate_rag_stream(
     region = analysis.get("region")
     enhanced_query = analysis.get("enhanced_query", question)
 
-    category = classify_question(question)
-    ctx = _prepare_rag_context(
-        enhanced_query,
-        max_chunks,
-        project=project,
-        region=region,
-        category=category,
-        language=detected_language,
-    )
+    # Parallelize semantic_search and category classification
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_ctx = executor.submit(
+            _prepare_rag_context,
+            enhanced_query,
+            max_chunks,
+            project,
+            region,
+            category,
+            detected_language,
+        )
+        ctx = future_ctx.result()
 
     if ctx.get("empty"):
         yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'language': detected_language})}\n\n"
@@ -962,12 +971,16 @@ def generate_rag_response(
             "refinement_round": refinement_round,
         }
 
-    analysis = analyze_context(question, chat_history)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_analysis = executor.submit(analyze_context, question, chat_history)
+        future_category = executor.submit(classify_question, question)
+        analysis = future_analysis.result()
+        category = future_category.result()
+
     detected_language = language or analysis.get("language")
 
     if analysis.get("status") == "need_info":
         follow_up = analysis.get("follow_up", "Could you provide more details?")
-        category = classify_question(question)
         return {
             "question": question,
             "answer": follow_up,
@@ -988,7 +1001,7 @@ def generate_rag_response(
         max_chunks,
         project=project,
         region=region,
-        category=classify_question(question),
+        category=category,
         language=detected_language,
     )
 
