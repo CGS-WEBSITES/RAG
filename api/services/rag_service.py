@@ -35,6 +35,26 @@ CATEGORIES = [
 _openai_client = None
 
 
+def _detect_language(text: str) -> str:
+    client = _get_openai_client()
+    try:
+        response = client.chat.completions.create(
+            model=Config.get_llm_model(),
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Detect the language of this text and respond with ONLY the ISO 639-1 code (e.g. pt, en, es, de, fr). Text: {text[:100]}",
+                }
+            ],
+            max_tokens=5,
+            temperature=0,
+        )
+        lang = response.choices[0].message.content.strip().lower()[:2]
+        return lang if lang else "en"
+    except Exception:
+        return "en"
+
+
 def _get_openai_client() -> OpenAI:
     global _openai_client
     if _openai_client is None:
@@ -584,9 +604,18 @@ def _build_refinement_system_prompt(
     refinement_round: int = 1,
 ) -> str:
     LANG_NAMES = {
-        "pt": "Portuguese", "en": "English", "es": "Spanish", "de": "German",
-        "fr": "French", "it": "Italian", "ja": "Japanese", "zh": "Chinese",
-        "ko": "Korean", "ru": "Russian", "nl": "Dutch", "pl": "Polish",
+        "pt": "Portuguese",
+        "en": "English",
+        "es": "Spanish",
+        "de": "German",
+        "fr": "French",
+        "it": "Italian",
+        "ja": "Japanese",
+        "zh": "Chinese",
+        "ko": "Korean",
+        "ru": "Russian",
+        "nl": "Dutch",
+        "pl": "Polish",
     }
     lang_name = LANG_NAMES.get(language or "en", "English")
 
@@ -683,7 +712,11 @@ def generate_rag_stream(
                         "model": model,
                         "messages": llm_messages,
                         "stream": True,
-                        "options": {"temperature": 0.7, "num_predict": 1024, "num_ctx": 4096},
+                        "options": {
+                            "temperature": 0.7,
+                            "num_predict": 1024,
+                            "num_ctx": 4096,
+                        },
                     },
                     timeout=300,
                     stream=True,
@@ -730,8 +763,13 @@ def generate_rag_stream(
     _project = project
     _region = region
     if _project and _region:
-        category = classify_question(question)
-        detected_language = language
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_category = executor.submit(classify_question, question)
+            future_lang = (
+                executor.submit(_detect_language, question) if not language else None
+            )
+            category = future_category.result()
+            detected_language = language if language else future_lang.result()
         enhanced_query = question
     else:
         # Parallelize analyze_context and classify_question to reduce latency
@@ -778,7 +816,12 @@ def generate_rag_stream(
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_ctx = executor.submit(
             _prepare_rag_context,
-            enhanced_query, max_chunks, _project, _region, category, detected_language
+            enhanced_query,
+            max_chunks,
+            _project,
+            _region,
+            category,
+            detected_language,
         )
         ctx = future_ctx.result()
 
@@ -941,7 +984,11 @@ def generate_rag_response(
                         "model": model,
                         "messages": llm_messages,
                         "stream": False,
-                        "options": {"temperature": 0.7, "num_predict": 1024, "num_ctx": 4096},
+                        "options": {
+                            "temperature": 0.7,
+                            "num_predict": 1024,
+                            "num_ctx": 4096,
+                        },
                     },
                     timeout=300,
                 )
@@ -987,8 +1034,13 @@ def generate_rag_response(
     _project = project
     _region = region
     if _project and _region:
-        category = classify_question(question)
-        detected_language = language
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_category = executor.submit(classify_question, question)
+            future_lang = (
+                executor.submit(_detect_language, question) if not language else None
+            )
+            category = future_category.result()
+            detected_language = language if language else future_lang.result()
         enhanced_query = question
     else:
         with ThreadPoolExecutor(max_workers=2) as executor:
