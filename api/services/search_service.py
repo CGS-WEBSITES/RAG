@@ -1,14 +1,11 @@
 import logging
 from functools import lru_cache
 from typing import Any
-
 from openai import OpenAI
-
 from api.config import Config
 from api.database import get_cursor
 
 logger = logging.getLogger(__name__)
-
 _client = None
 
 
@@ -31,7 +28,6 @@ def _openai_embed(text: str) -> list[float]:
         )
     except Exception as e:
         raise RuntimeError(f"Erro ao gerar embedding via OpenAI: {e}") from e
-
     embedding = response.data[0].embedding
     if not isinstance(embedding, list) or not embedding:
         raise RuntimeError(f"Embedding inválido retornado: {response}")
@@ -53,7 +49,6 @@ def get_all_by_source(source: str) -> list[dict[str, Any]]:
     with get_cursor() as cur:
         cur.execute(sql, (source,))
         rows = cur.fetchall()
-
     return [
         {
             "id": row["id"],
@@ -74,15 +69,11 @@ def semantic_search(
     query = (query or "").strip()
     if not query:
         return []
-
     limit = max(1, min(int(limit), 20))
-
     query_embedding = list(_embed_cached(query.lower()))
     vec_literal = "[" + ",".join(f"{x:.8f}" for x in query_embedding) + "]"
-
     source_filter = ""
     params: list = [vec_literal]
-
     if source:
         source_filter = "AND doc.metadata->>'source' = %s"
         params.append(source)
@@ -93,10 +84,8 @@ def semantic_search(
             f"OR doc.metadata->>'source' NOT IN ({placeholders}))"
         )
         params.extend(exclude_sources)
-
     params.append(limit)
     params.append(max_distance)
-
     sql = f"""
         WITH ranked AS (
             SELECT
@@ -115,11 +104,9 @@ def semantic_search(
         WHERE distance <= %s
         ORDER BY distance
     """
-
     with get_cursor() as cur:
         cur.execute(sql, params)
         rows = cur.fetchall()
-
     return [
         {
             "id": row["id"],
@@ -129,3 +116,65 @@ def semantic_search(
         }
         for row in rows
     ]
+
+
+def get_logistics_by_project_region(project: str, region: str) -> list[dict]:
+    region_aliases = {
+        "brazil": "brasil",
+        "brasilien": "brasil",
+        "eua": "eua",
+        "usa": "eua",
+        "us": "eua",
+        "europe": "europa",
+        "europa": "europa",
+        "asia": "ásia",
+        "oceania": "oceania",
+        "rest of world": "resto do mundo",
+    }
+    region_normalized = region_aliases.get(region.lower(), region.lower())
+
+    sql = """
+        SELECT id, title, content AS chunk
+        FROM public.documents
+        WHERE metadata->>'source' = 'logistics'
+            AND title ILIKE %s
+            AND title ILIKE %s
+        LIMIT 1
+    """
+    with get_cursor() as cur:
+        cur.execute(sql, (f"%{project}%", f"%{region_normalized}%"))
+        row = cur.fetchone()
+
+    if row:
+        return [
+            {
+                "id": row["id"],
+                "title": row["title"],
+                "chunk": row["chunk"],
+                "distance": 0.0,
+            }
+        ]
+
+    # Fallback: search only by project
+    sql_fallback = """
+        SELECT id, title, content AS chunk
+        FROM public.documents
+        WHERE metadata->>'source' = 'logistics'
+            AND title ILIKE %s
+        LIMIT 1
+    """
+    with get_cursor() as cur:
+        cur.execute(sql_fallback, (f"%{project}%",))
+        row = cur.fetchone()
+
+    if row:
+        return [
+            {
+                "id": row["id"],
+                "title": row["title"],
+                "chunk": row["chunk"],
+                "distance": 0.0,
+            }
+        ]
+
+    return []

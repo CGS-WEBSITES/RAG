@@ -8,7 +8,11 @@ import requests
 from openai import OpenAI
 
 from api.config import Config
-from api.services.search_service import semantic_search, get_all_by_source
+from api.services.search_service import (
+    semantic_search,
+    get_all_by_source,
+    get_logistics_by_project_region,
+)
 from api.services.history_service import save_chat
 from api.services.character_prompts import get_character_prompt, get_character_name
 
@@ -422,46 +426,50 @@ def _prepare_rag_context(
 
     logistics_chunks = []
     if include_logistics:
-        logistics_limit = 3 if project or region else 1
-        logistics_chunks = semantic_search(
-            question, limit=logistics_limit, source="logistics"
-        )
-        logistics_chunks = _filter_chunks(logistics_chunks)
+        if project and region:
+            # Direct lookup by project+region — bypass semantic search and relevance filter
+            logistics_chunks = get_logistics_by_project_region(project, region)
+        else:
+            logistics_limit = 3 if project or region else 1
+            logistics_chunks = semantic_search(
+                question, limit=logistics_limit, source="logistics"
+            )
+            logistics_chunks = _filter_chunks(logistics_chunks)
 
-        if project and logistics_chunks:
-            filtered = [
-                c
-                for c in logistics_chunks
-                if project.lower() in c.get("title", "").lower()
-                or project.lower() in c.get("chunk", "").lower()
-            ]
-            if filtered:
-                logistics_chunks = filtered
+            if project and logistics_chunks:
+                filtered = [
+                    c
+                    for c in logistics_chunks
+                    if project.lower() in c.get("title", "").lower()
+                    or project.lower() in c.get("chunk", "").lower()
+                ]
+                if filtered:
+                    logistics_chunks = filtered
 
-        if region and logistics_chunks:
-            region_aliases = {
-                "brazil": "brasil",
-                "brasilien": "brasil",
-                "eua": "eua",
-                "usa": "eua",
-                "us": "eua",
-                "europe": "europa",
-                "europa": "europa",
-                "asia": "ásia",
-                "oceania": "oceania",
-            }
-            region_normalized = region_aliases.get(region.lower(), region.lower())
-            filtered = [
-                c
-                for c in logistics_chunks
-                if region_normalized in c.get("title", "").lower()
-                or region_normalized in c.get("chunk", "").lower()
-            ]
-            if filtered:
-                logistics_chunks = filtered
+            if region and logistics_chunks:
+                region_aliases = {
+                    "brazil": "brasil",
+                    "brasilien": "brasil",
+                    "eua": "eua",
+                    "usa": "eua",
+                    "us": "eua",
+                    "europe": "europa",
+                    "europa": "europa",
+                    "asia": "ásia",
+                    "oceania": "oceania",
+                }
+                region_normalized = region_aliases.get(region.lower(), region.lower())
+                filtered = [
+                    c
+                    for c in logistics_chunks
+                    if region_normalized in c.get("title", "").lower()
+                    or region_normalized in c.get("chunk", "").lower()
+                ]
+                if filtered:
+                    logistics_chunks = filtered
 
-        if len(logistics_chunks) > 1:
-            logistics_chunks = logistics_chunks[:1]
+            if len(logistics_chunks) > 1:
+                logistics_chunks = logistics_chunks[:1]
 
     voice_tone_docs = get_all_by_source("voice_tone")
 
@@ -521,7 +529,7 @@ def _prepare_rag_context(
             f"to go back to the previous page to select the correct project and region."
         )
 
-    character_prompt = get_character_prompt(project)
+    character_prompt = get_character_prompt(project, region)
 
     if character_prompt:
         system_prompt = (
