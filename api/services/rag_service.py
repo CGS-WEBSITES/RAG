@@ -8,8 +8,14 @@ import requests
 from openai import OpenAI
 
 from api.config import Config
-from api.services.search_service import semantic_search, get_all_by_source
+from api.services.search_service import (
+    semantic_search,
+    get_all_by_source,
+    get_logistics_by_project_region,
+    search_manual_segments,
+)
 from api.services.history_service import save_chat
+from api.services.character_prompts import get_character_prompt, get_character_name
 
 logger = logging.getLogger(__name__)
 
@@ -28,10 +34,31 @@ CATEGORIES = [
     "pagamento",
     "cancelamento",
     "rastreamento",
+    "game_rules",
     "outro",
 ]
 
 _openai_client = None
+
+
+def _detect_language(text: str) -> str:
+    client = _get_openai_client()
+    try:
+        response = client.chat.completions.create(
+            model=Config.get_llm_model(),
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Detect the language of this text and respond with ONLY the ISO 639-1 code (e.g. pt, en, es, de, fr). Text: {text[:100]}",
+                }
+            ],
+            max_tokens=5,
+            temperature=0,
+        )
+        lang = response.choices[0].message.content.strip().lower()[:2]
+        return lang if lang else "en"
+    except Exception:
+        return "en"
 
 
 def _get_openai_client() -> OpenAI:
@@ -63,7 +90,19 @@ def classify_question(question: str) -> str:
     categories_str = ", ".join(CATEGORIES)
     prompt = (
         f"Classify this customer support question into exactly ONE category.\n"
-        f"Categories: {categories_str}\n"
+        f"Categories: {categories_str}\n\n"
+        f"Category definitions:\n"
+        f"- game_rules: questions about how to play the game, game mechanics, rules, components, setup, gameplay, abilities, skills, monsters, dungeons, campaigns, characters, cards, tokens, dice. Examples: 'How does the Darkness work?', 'Como funciona a Escuridão?', 'What is a Berserker Spirit?', 'Quantos jogadores podem jogar?', 'How do I set up the game?', 'O que é uma Campanha?'\n"
+        f"- atraso_entrega: delayed orders or deliveries\n"
+        f"- reembolso: refund requests\n"
+        f"- troca_endereco: address changes\n"
+        f"- status_pedido: order status inquiries\n"
+        f"- duvida_produto: general product questions (NOT game rules)\n"
+        f"- dano_defeito: damaged or defective items\n"
+        f"- pagamento: payment issues\n"
+        f"- cancelamento: order cancellations\n"
+        f"- rastreamento: shipment tracking\n"
+        f"- outro: anything else\n\n"
         f"Question: {question}\n"
         f"Respond with ONLY the category name, nothing else."
     )
@@ -390,6 +429,108 @@ def _prepare_rag_context(
 ) -> dict:
     model = Config.get_llm_model()
 
+    # If game_rules category and project is set, search ONLY in manual segments
+    if category == "game_rules" and project:
+        manual_chunks = search_manual_segments(
+            question, project=project, limit=max_chunks
+        )
+        if not manual_chunks:
+            not_found_messages = {
+                "pt": "Não encontrei informações sobre isso no manual do jogo.",
+                "en": "No relevant information found in the game manual.",
+                "es": "No encontré información sobre esto en el manual del juego.",
+                "de": "Keine relevanten Informationen im Spielhandbuch gefunden.",
+                "fr": "Aucune information pertinente trouvée dans le manuel du jeu.",
+                "it": "Nessuna informazione rilevante trovata nel manuale del gioco.",
+                "ja": "ゲームマニュアルに関連情報が見つかりませんでした。",
+                "zh": "游戏手册中未找到相关信息。",
+                "ko": "게임 매뉴얼에서 관련 정보를 찾을 수 없습니다.",
+                "ru": "В руководстве по игре не найдено соответствующей информации.",
+                "nl": "Geen relevante informatie gevonden in de spelhandleiding.",
+                "pl": "Nie znaleziono odpowiednich informacji w instrukcji gry.",
+            }
+            manual_not_found = not_found_messages.get(
+                language or "en", not_found_messages["en"]
+            )
+            return {"empty": True, "model": model, "not_found_msg": manual_not_found}
+        context_parts = []
+        for c in manual_chunks:
+            section = c.get("section_title", "")
+            page = c.get("page_number", "")
+            label = f"Manual {project}"
+            if section:
+                label += f" — {section}"
+            if page:
+                label += f" (p.{page})"
+            chunk_text = _sanitize_text(c["chunk"])
+            if chunk_text:
+                context_parts.append(f"{label}:\n{chunk_text}")
+        context = "\n\n".join(context_parts)
+        sources = {
+            "tickets": [],
+            "logistics": [],
+            "manual": [
+                {
+                    "id": c["id"],
+                    "title": f"{c.get('section_title', 'Manual')} (p.{c.get('page_number', '?')})",
+                    "chunk": c["chunk"],
+                    "distance": c["distance"],
+                }
+                for c in manual_chunks
+            ],
+        }
+        character_prompt = get_character_prompt(project, region)
+        LANG_NAMES_MANUAL = {
+            "pt": "Portuguese",
+            "en": "English",
+            "es": "Spanish",
+            "de": "German",
+            "fr": "French",
+            "it": "Italian",
+            "ja": "Japanese",
+            "zh": "Chinese",
+            "ko": "Korean",
+            "ru": "Russian",
+            "nl": "Dutch",
+            "pl": "Polish",
+        }
+        lang_instruction = ""
+        if language:
+            lang_name = LANG_NAMES_MANUAL.get(language, language.upper())
+            lang_instruction = f"\nALWAYS respond in {lang_name}. This is mandatory."
+
+        if character_prompt:
+            system_prompt = (
+                f"{character_prompt}\n\n"
+                "GAME RULES KNOWLEDGE:\n"
+                "- You have access to the official game rulebook. Use it to answer the user's question accurately.\n"
+                "- Stay in character while explaining the rules — translate rulebook language into your world's vocabulary.\n"
+                "- Never mention 'rulebook', 'manual', 'document' or any technical term directly.\n\n"
+                "STRICT RULES:\n"
+                "- NEVER break character.\n"
+                f"- ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
+            )
+        else:
+            system_prompt = (
+                "You are a helpful game rules assistant for Creative Games Studio (CGS).\n"
+                "Use the provided rulebook excerpts to answer the player's question accurately and clearly.\n"
+                "Keep answers concise and easy to understand.\n"
+                f"ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
+            )
+
+        user_prompt = f"RULEBOOK EXCERPTS:\n{context}\n\nQUESTION: {question}"
+
+        return {
+            "empty": False,
+            "context": context,
+            "sources": sources,
+            "model": model,
+            "system_prompt": system_prompt,
+            "user_prompt": user_prompt,
+            "ticket_chunks": [],
+            "logistics_chunks": [],
+        }
+
     ticket_chunks = semantic_search(question, limit=max_chunks, source="tickets")
     ticket_chunks = _filter_chunks(ticket_chunks)
 
@@ -401,51 +542,55 @@ def _prepare_rag_context(
 
     logistics_chunks = []
     if include_logistics:
-        logistics_limit = 3 if project or region else 1
-        logistics_chunks = semantic_search(
-            question, limit=logistics_limit, source="logistics"
-        )
-        logistics_chunks = _filter_chunks(logistics_chunks)
+        if project and region:
+            # Direct lookup by project+region — bypass semantic search and relevance filter
+            logistics_chunks = get_logistics_by_project_region(project, region)
+        else:
+            logistics_limit = 3 if project or region else 1
+            logistics_chunks = semantic_search(
+                question, limit=logistics_limit, source="logistics"
+            )
+            logistics_chunks = _filter_chunks(logistics_chunks)
 
-        if project and logistics_chunks:
-            filtered = [
-                c
-                for c in logistics_chunks
-                if project.lower() in c.get("title", "").lower()
-                or project.lower() in c.get("chunk", "").lower()
-            ]
-            if filtered:
-                logistics_chunks = filtered
+            if project and logistics_chunks:
+                filtered = [
+                    c
+                    for c in logistics_chunks
+                    if project.lower() in c.get("title", "").lower()
+                    or project.lower() in c.get("chunk", "").lower()
+                ]
+                if filtered:
+                    logistics_chunks = filtered
 
-        if region and logistics_chunks:
-            region_aliases = {
-                "brazil": "brasil",
-                "brasilien": "brasil",
-                "eua": "eua",
-                "usa": "eua",
-                "us": "eua",
-                "europe": "europa",
-                "europa": "europa",
-                "asia": "ásia",
-                "oceania": "oceania",
-            }
-            region_normalized = region_aliases.get(region.lower(), region.lower())
-            filtered = [
-                c
-                for c in logistics_chunks
-                if region_normalized in c.get("title", "").lower()
-                or region_normalized in c.get("chunk", "").lower()
-            ]
-            if filtered:
-                logistics_chunks = filtered
+            if region and logistics_chunks:
+                region_aliases = {
+                    "brazil": "brasil",
+                    "brasilien": "brasil",
+                    "eua": "eua",
+                    "usa": "eua",
+                    "us": "eua",
+                    "europe": "europa",
+                    "europa": "europa",
+                    "asia": "ásia",
+                    "oceania": "oceania",
+                }
+                region_normalized = region_aliases.get(region.lower(), region.lower())
+                filtered = [
+                    c
+                    for c in logistics_chunks
+                    if region_normalized in c.get("title", "").lower()
+                    or region_normalized in c.get("chunk", "").lower()
+                ]
+                if filtered:
+                    logistics_chunks = filtered
 
-        if len(logistics_chunks) > 1:
-            logistics_chunks = logistics_chunks[:1]
+            if len(logistics_chunks) > 1:
+                logistics_chunks = logistics_chunks[:1]
 
     voice_tone_docs = get_all_by_source("voice_tone")
 
     if not ticket_chunks and not logistics_chunks:
-        return {"empty": True, "model": model}
+        return {"empty": True, "model": model, "not_found_msg": not_found_msg}
 
     voice_tone_text = "\n".join(
         f"- {doc['title']}: {doc['content']}" for doc in voice_tone_docs
@@ -481,6 +626,22 @@ def _prepare_rag_context(
         "pl": "Polish",
     }
 
+    NOT_FOUND_MESSAGES = {
+        "pt": "Não encontrei informações relevantes sobre isso na base de conhecimento.",
+        "en": "No relevant documents found in the knowledge base.",
+        "es": "No encontré información relevante sobre esto en la base de conocimiento.",
+        "de": "Ich habe keine relevanten Informationen dazu in der Wissensbasis gefunden.",
+        "fr": "Aucune information pertinente trouvée dans la base de connaissances.",
+        "it": "Non ho trovato informazioni rilevanti su questo nella base di conoscenza.",
+        "ja": "ナレッジベースに関連情報が見つかりませんでした。",
+        "zh": "知识库中未找到相关信息。",
+        "ko": "지식 베이스에서 관련 정보를 찾을 수 없습니다.",
+        "ru": "В базе знаний не найдено соответствующей информации.",
+        "nl": "Geen relevante informatie gevonden in de kennisbank.",
+        "pl": "Nie znaleziono odpowiednich informacji w bazie wiedzy.",
+    }
+    not_found_msg = NOT_FOUND_MESSAGES.get(language or "en", NOT_FOUND_MESSAGES["en"])
+
     context_hint = ""
     if project:
         context_hint += f"\nThe user is asking about project: {project}."
@@ -500,33 +661,54 @@ def _prepare_rag_context(
             f"to go back to the previous page to select the correct project and region."
         )
 
-    system_prompt = (
-        "You are a friendly, knowledgeable customer support assistant for Creative Games Studio (CGS), "
-        "a board game company. You have a warm, conversational tone — like a helpful colleague, not a robot.\n\n"
-        "VOICE TONE GUIDELINES (always follow this tone):\n"
-        f"{voice_tone_text}\n\n"
-        "HOW TO BEHAVE:\n"
-        "- Be conversational and natural. Use the person's context from the conversation history.\n"
-        "- If the user asks a follow-up like 'and in Europe?' or 'what about refunds?', "
-        "use the conversation history to understand what they're referring to.\n"
-        "- If you're unsure what the user means, ask a clarifying question naturally. "
-        "For example: 'Just to make sure I help you correctly — are you asking about...?'\n"
-        "- Keep answers concise but helpful. Don't over-explain.\n"
-        "- The tickets provided are EXAMPLES of past support conversations. "
-        "Use them as reference to craft your response, but never mention them.\n"
-        "- The logistics data shows current shipping status. Reference it ONLY if it matches "
-        "the user's project and region.\n\n"
-        "STRICT RULES:\n"
-        "- NEVER include personal data: no names, emails, addresses, order IDs, phone numbers. "
-        "Do NOT sign with any name or title.\n"
-        "- NEVER add meta-commentary about tickets, your process, or sections like 'Observação:'.\n"
-        "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message in the conversation. "
-        "If they started in English, keep English even if later messages are in another language.\n"
-        "- If no relevant info is found, say so naturally and suggest contacting "
-        "customerservice@wearecgs.com."
-        f"{context_hint}"
-        f"{scope_rule}"
-    )
+    character_prompt = get_character_prompt(project, region)
+
+    if character_prompt:
+        system_prompt = (
+            f"{character_prompt}\n\n"
+            "SUPPORT KNOWLEDGE:\n"
+            "- You have access to past support ticket examples and logistics data. "
+            "Use them as reference to answer the user's actual problem — but translate everything "
+            "into your character's language and world.\n"
+            "- Never mention 'tickets', 'documents', 'database' or any technical term.\n\n"
+            "STRICT RULES:\n"
+            "- NEVER include personal data: no names, emails, addresses, order IDs, phone numbers.\n"
+            "- NEVER break character under any circumstance.\n"
+            "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message.\n"
+            "- If no relevant info is found, say so in character and suggest contacting "
+            "customerservice@wearecgs.com — but phrase it as your character would.\n"
+            "- If the user asks about a topic outside this project's scope, redirect them "
+            "in character to go back and select the correct project."
+            f"{context_hint}"
+        )
+    else:
+        system_prompt = (
+            "You are a friendly, knowledgeable customer support assistant for Creative Games Studio (CGS), "
+            "a board game company. You have a warm, conversational tone — like a helpful colleague, not a robot.\n\n"
+            "VOICE TONE GUIDELINES (always follow this tone):\n"
+            f"{voice_tone_text}\n\n"
+            "HOW TO BEHAVE:\n"
+            "- Be conversational and natural. Use the person's context from the conversation history.\n"
+            "- If the user asks a follow-up like 'and in Europe?' or 'what about refunds?', "
+            "use the conversation history to understand what they're referring to.\n"
+            "- If you're unsure what the user means, ask a clarifying question naturally. "
+            "For example: 'Just to make sure I help you correctly — are you asking about...?'\n"
+            "- Keep answers concise but helpful. Don't over-explain.\n"
+            "- The tickets provided are EXAMPLES of past support conversations. "
+            "Use them as reference to craft your response, but never mention them.\n"
+            "- The logistics data shows current shipping status. Reference it ONLY if it matches "
+            "the user's project and region.\n\n"
+            "STRICT RULES:\n"
+            "- NEVER include personal data: no names, emails, addresses, order IDs, phone numbers. "
+            "Do NOT sign with any name or title.\n"
+            "- NEVER add meta-commentary about tickets, your process, or sections like 'Observação:'.\n"
+            "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message in the conversation. "
+            "If they started in English, keep English even if later messages are in another language.\n"
+            "- If no relevant info is found, say so naturally and suggest contacting "
+            "customerservice@wearecgs.com."
+            f"{context_hint}"
+            f"{scope_rule}"
+        )
 
     user_prompt = f"DOCUMENTS:\n{context}\n\nQUESTION: {question}"
 
@@ -610,6 +792,8 @@ def generate_rag_stream(
     session_id: str = "",
     chat_history: list[dict] | None = None,
     language: str | None = None,
+    project: str | None = None,
+    region: str | None = None,
     refinement_round: int = 0,
     parent_message_id: str | None = None,
     original_question: str | None = None,
@@ -715,45 +899,58 @@ def generate_rag_stream(
         yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
         return
 
-    # Parallelize analyze_context and classify_question to reduce latency
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future_analysis = executor.submit(analyze_context, question, chat_history)
-        future_category = executor.submit(classify_question, question)
-        analysis = future_analysis.result()
-        category = future_category.result()
+    # If project and region are already provided, skip context analysis entirely
+    _project = project
+    _region = region
+    if _project and _region:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_category = executor.submit(classify_question, question)
+            future_lang = (
+                executor.submit(_detect_language, question) if not language else None
+            )
+            category = future_category.result()
+            detected_language = language if language else future_lang.result()
+        enhanced_query = question
+    else:
+        # Parallelize analyze_context and classify_question to reduce latency
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_analysis = executor.submit(analyze_context, question, chat_history)
+            future_category = executor.submit(classify_question, question)
+            analysis = future_analysis.result()
+            category = future_category.result()
 
-    detected_language = language or analysis.get("language")
+        detected_language = language or analysis.get("language")
 
-    if analysis.get("status") == "need_info":
-        follow_up = analysis.get("follow_up", "Could you provide more details?")
+        if analysis.get("status") == "need_info":
+            follow_up = analysis.get("follow_up", "Could you provide more details?")
 
-        yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'need_info': True, 'language': detected_language})}\n\n"
-        for word in follow_up.split(" "):
-            yield f"data: {json.dumps({'type': 'token', 'content': word + ' '})}\n\n"
+            yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'need_info': True, 'language': detected_language})}\n\n"
+            for word in follow_up.split(" "):
+                yield f"data: {json.dumps({'type': 'token', 'content': word + ' '})}\n\n"
 
-        chat_id = ""
-        if session_id:
-            try:
-                chat_id = save_chat(
-                    session_id=session_id,
-                    question=question,
-                    answer=follow_up,
-                    category=category,
-                    model=model,
-                    provider=Config.LLM_PROVIDER,
-                    tokens_in=0,
-                    tokens_out=0,
-                    sources_count=0,
-                )
-            except Exception as e:
-                logger.warning("Failed to save chat history: %s", e)
+            chat_id = ""
+            if session_id:
+                try:
+                    chat_id = save_chat(
+                        session_id=session_id,
+                        question=question,
+                        answer=follow_up,
+                        category=category,
+                        model=model,
+                        provider=Config.LLM_PROVIDER,
+                        tokens_in=0,
+                        tokens_out=0,
+                        sources_count=0,
+                    )
+                except Exception as e:
+                    logger.warning("Failed to save chat history: %s", e)
 
-        yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
-        return
+            yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
+            return
 
-    project = analysis.get("project")
-    region = analysis.get("region")
-    enhanced_query = analysis.get("enhanced_query", question)
+        _project = analysis.get("project")
+        _region = analysis.get("region")
+        enhanced_query = analysis.get("enhanced_query", question)
 
     # Parallelize semantic_search and category classification
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -761,16 +958,19 @@ def generate_rag_stream(
             _prepare_rag_context,
             enhanced_query,
             max_chunks,
-            project,
-            region,
+            _project,
+            _region,
             category,
             detected_language,
         )
         ctx = future_ctx.result()
 
     if ctx.get("empty"):
+        nf_msg = ctx.get(
+            "not_found_msg", "No relevant documents found in the knowledge base."
+        )
         yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'language': detected_language})}\n\n"
-        yield f"data: {json.dumps({'type': 'token', 'content': 'No relevant documents found in the knowledge base.'})}\n\n"
+        yield f"data: {json.dumps({'type': 'token', 'content': nf_msg})}\n\n"
         yield f"data: {json.dumps({'type': 'done', 'chat_id': ''})}\n\n"
         return
 
@@ -881,6 +1081,8 @@ def generate_rag_response(
     session_id: str = "",
     chat_history: list[dict] | None = None,
     language: str | None = None,
+    project: str | None = None,
+    region: str | None = None,
     refinement_round: int = 0,
     parent_message_id: str | None = None,
     original_question: str | None = None,
@@ -971,36 +1173,49 @@ def generate_rag_response(
             "refinement_round": refinement_round,
         }
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future_analysis = executor.submit(analyze_context, question, chat_history)
-        future_category = executor.submit(classify_question, question)
-        analysis = future_analysis.result()
-        category = future_category.result()
+    # If project and region are already provided, skip context analysis entirely
+    _project = project
+    _region = region
+    if _project and _region:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_category = executor.submit(classify_question, question)
+            future_lang = (
+                executor.submit(_detect_language, question) if not language else None
+            )
+            category = future_category.result()
+            detected_language = language if language else future_lang.result()
+        enhanced_query = question
+    else:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_analysis = executor.submit(analyze_context, question, chat_history)
+            future_category = executor.submit(classify_question, question)
+            analysis = future_analysis.result()
+            category = future_category.result()
 
-    detected_language = language or analysis.get("language")
+        detected_language = language or analysis.get("language")
 
-    if analysis.get("status") == "need_info":
-        follow_up = analysis.get("follow_up", "Could you provide more details?")
-        return {
-            "question": question,
-            "answer": follow_up,
-            "sources": {"tickets": [], "logistics": []},
-            "model": Config.get_llm_model(),
-            "category": category,
-            "chat_id": "",
-            "need_info": True,
-            "language": detected_language,
-        }
+        if analysis.get("status") == "need_info":
+            follow_up = analysis.get("follow_up", "Could you provide more details?")
+            return {
+                "question": question,
+                "answer": follow_up,
+                "sources": {"tickets": [], "logistics": []},
+                "model": Config.get_llm_model(),
+                "category": category,
+                "chat_id": "",
+                "need_info": True,
+                "language": detected_language,
+            }
 
-    project = analysis.get("project")
-    region = analysis.get("region")
-    enhanced_query = analysis.get("enhanced_query", question)
+        _project = analysis.get("project")
+        _region = analysis.get("region")
+        enhanced_query = analysis.get("enhanced_query", question)
 
     ctx = _prepare_rag_context(
         enhanced_query,
         max_chunks,
-        project=project,
-        region=region,
+        project=_project,
+        region=_region,
         category=category,
         language=detected_language,
     )
@@ -1008,7 +1223,9 @@ def generate_rag_response(
     if ctx.get("empty"):
         return {
             "question": question,
-            "answer": "No relevant documents found in the knowledge base.",
+            "answer": ctx.get(
+                "not_found_msg", "No relevant documents found in the knowledge base."
+            ),
             "sources": {"tickets": [], "logistics": []},
             "model": ctx["model"],
             "category": "outro",

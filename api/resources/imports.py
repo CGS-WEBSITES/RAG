@@ -44,6 +44,11 @@ document_update = ns.model(
     },
 )
 
+MANUAL_PROJECT_MAP = {
+    8: "Battleforge",
+    9: "Drunagor",
+}
+
 
 def _get_file_extension(filename: str) -> str:
     return os.path.splitext(filename)[1].lower()
@@ -133,6 +138,21 @@ def _count_by_source(source: str) -> int:
             "SELECT COUNT(*) as total FROM documents WHERE metadata->>'source' = %s",
             (source,),
         )
+        row = cur.fetchone()
+        return row["total"] if row else 0
+
+
+def _count_manual_segments(project: str | None = None) -> int:
+    if project:
+        with get_cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) as total FROM manual_segments WHERE project = %s",
+                (project,),
+            )
+            row = cur.fetchone()
+            return row["total"] if row else 0
+    with get_cursor() as cur:
+        cur.execute("SELECT COUNT(*) as total FROM manual_segments")
         row = cur.fetchone()
         return row["total"] if row else 0
 
@@ -469,6 +489,116 @@ class ImportVoiceTone(Resource):
         }, 201
 
 
+@ns.route("/manuals")
+class ImportManuals(Resource):
+    @ns.doc("import_manuals")
+    @ns.expect(file_parser)
+    def post(self):
+        """Import game manual segments from CSV.
+        Expected columns: manual_id, numero_pagina, titulo_secao, conteudo_texto, caminho_imagem, descricao_imagem
+        """
+        if "file" not in request.files:
+            ns.abort(400, "No file uploaded")
+        file = request.files["file"]
+
+        try:
+            _validate_file(file)
+            records = _file_to_records(file)
+        except ValueError as e:
+            ns.abort(400, str(e))
+        except Exception as e:
+            ns.abort(400, f"Error reading file: {e}")
+
+        if not records:
+            ns.abort(400, "File is empty or has no valid records")
+
+        first_manual_id = None
+        for r in records:
+            mid = r.get("manual_id")
+            if mid:
+                try:
+                    first_manual_id = int(float(str(mid)))
+                    break
+                except (ValueError, TypeError):
+                    pass
+
+        project = (
+            MANUAL_PROJECT_MAP.get(first_manual_id, f"Manual-{first_manual_id}")
+            if first_manual_id
+            else None
+        )
+
+        deleted = 0
+        if project:
+            with get_cursor() as cur:
+                cur.execute(
+                    "DELETE FROM manual_segments WHERE project = %s", (project,)
+                )
+                deleted = cur.rowcount
+            logger.info(
+                "Manuals: %d old segments removed for project %s", deleted, project
+            )
+
+        inserted = 0
+        errors = 0
+        for row in records:
+            try:
+                manual_id_raw = row.get("manual_id", "")
+                if not manual_id_raw and manual_id_raw != 0:
+                    errors += 1
+                    continue
+
+                manual_id = int(float(str(manual_id_raw)))
+                row_project = MANUAL_PROJECT_MAP.get(manual_id, f"Manual-{manual_id}")
+
+                content = str(row.get("conteudo_texto", "")).strip()
+                if not content:
+                    errors += 1
+                    continue
+
+                page_number = None
+                page_raw = row.get("numero_pagina", "")
+                if page_raw != "" and page_raw is not None:
+                    try:
+                        page_number = int(float(str(page_raw)))
+                    except (ValueError, TypeError):
+                        pass
+
+                section_title = str(row.get("titulo_secao", "")).strip() or None
+                image_path = str(row.get("caminho_imagem", "")).strip() or None
+                image_description = str(row.get("descricao_imagem", "")).strip() or None
+
+                with get_cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO manual_segments
+                            (manual_id, project, page_number, section_title, content, image_path, image_description)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (
+                            manual_id,
+                            row_project,
+                            page_number,
+                            section_title,
+                            content,
+                            image_path,
+                            image_description,
+                        ),
+                    )
+                inserted += 1
+            except Exception as e:
+                logger.error("Error importing manual segment: %s", e)
+                errors += 1
+
+        return {
+            "status": "success",
+            "project": project,
+            "deleted": deleted,
+            "inserted": inserted,
+            "errors": errors,
+        }, 201
+
+
 @ns.route("/documents")
 class DocumentCreate(Resource):
     @ns.doc("create_document")
@@ -514,9 +644,13 @@ class DocumentUpdate(Resource):
 class ImportStatus(Resource):
     @ns.doc("import_status")
     def get(self):
+        with get_cursor() as cur:
+            cur.execute("SELECT COUNT(*) as total FROM manual_segments")
+            manual_count = cur.fetchone()["total"]
         return {
             "tickets": _count_by_source("tickets"),
             "logistics": _count_by_source("logistics"),
             "voice_tone": _count_by_source("voice_tone"),
             "game_comments": _count_by_source("game_comments"),
+            "manual_segments": manual_count,
         }
