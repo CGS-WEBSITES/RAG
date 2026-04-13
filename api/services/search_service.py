@@ -137,8 +137,8 @@ def get_logistics_by_project_region(project: str, region: str) -> list[dict]:
         SELECT id, title, content AS chunk
         FROM public.documents
         WHERE metadata->>'source' = 'logistics'
-            AND title ILIKE %s
-            AND title ILIKE %s
+          AND title ILIKE %s
+          AND title ILIKE %s
         LIMIT 1
     """
     with get_cursor() as cur:
@@ -160,7 +160,7 @@ def get_logistics_by_project_region(project: str, region: str) -> list[dict]:
         SELECT id, title, content AS chunk
         FROM public.documents
         WHERE metadata->>'source' = 'logistics'
-            AND title ILIKE %s
+          AND title ILIKE %s
         LIMIT 1
     """
     with get_cursor() as cur:
@@ -178,3 +178,48 @@ def get_logistics_by_project_region(project: str, region: str) -> list[dict]:
         ]
 
     return []
+
+
+def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dict]:
+    query = (query or "").strip()
+    if not query or not project:
+        return []
+
+    limit = max(1, min(int(limit), 10))
+    query_embedding = list(_embed_cached(query.lower()))
+    vec_literal = "[" + ",".join(f"{x:.8f}" for x in query_embedding) + "]"
+
+    sql = """
+        WITH ranked AS (
+            SELECT
+                ms.id,
+                ms.project,
+                ms.page_number,
+                ms.section_title,
+                emb.chunk,
+                emb.embedding <=> (%s)::vector AS distance
+            FROM public.manual_segments_embedding_store emb
+            JOIN public.manual_segments ms ON ms.id = emb.id
+            WHERE ms.project = %s
+            ORDER BY distance
+            LIMIT %s
+        )
+        SELECT * FROM ranked
+        WHERE distance <= 1.2
+        ORDER BY distance
+    """
+    with get_cursor() as cur:
+        cur.execute(sql, (vec_literal, project, limit))
+        rows = cur.fetchall()
+
+    return [
+        {
+            "id": row["id"],
+            "project": row["project"],
+            "page_number": row["page_number"],
+            "section_title": row["section_title"],
+            "chunk": row["chunk"],
+            "distance": round(float(row["distance"]), 4),
+        }
+        for row in rows
+    ]
