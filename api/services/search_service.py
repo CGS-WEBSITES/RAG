@@ -196,6 +196,7 @@ def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dic
                 ms.project,
                 ms.page_number,
                 ms.section_title,
+                ms.image_path,
                 emb.chunk,
                 emb.embedding <=> (%s)::vector AS distance
             FROM public.manual_segments_embedding_store emb
@@ -218,6 +219,7 @@ def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dic
             "project": row["project"],
             "page_number": row["page_number"],
             "section_title": row["section_title"],
+            "image_path": row["image_path"],
             "chunk": row["chunk"],
             "distance": round(float(row["distance"]), 4),
         }

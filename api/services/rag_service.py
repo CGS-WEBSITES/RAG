@@ -457,14 +457,24 @@ def _prepare_rag_context(
         for c in manual_chunks:
             section = c.get("section_title", "")
             page = c.get("page_number", "")
+            image_path = c.get("image_path", "")
             label = f"Manual {project}"
             if section:
                 label += f" — {section}"
             if page:
-                label += f" (p.{page})"
+                label += f" (page {page})"
+
+            # Build image reference string
+            image_ref = ""
+            if image_path:
+                images = [img.strip() for img in image_path.split(",") if img.strip()]
+                image_names = [img.split("/")[-1] for img in images]
+                if image_names:
+                    image_ref = f"\n[Images: {', '.join(image_names)}]"
+
             chunk_text = _sanitize_text(c["chunk"])
             if chunk_text:
-                context_parts.append(f"{label}:\n{chunk_text}")
+                context_parts.append(f"{label}:{image_ref}\n{chunk_text}")
         context = "\n\n".join(context_parts)
         sources = {
             "tickets": [],
@@ -475,6 +485,8 @@ def _prepare_rag_context(
                     "title": f"{c.get('section_title', 'Manual')} (p.{c.get('page_number', '?')})",
                     "chunk": c["chunk"],
                     "distance": c["distance"],
+                    "image_path": c.get("image_path", ""),
+                    "page_number": c.get("page_number"),
                 }
                 for c in manual_chunks
             ],
@@ -505,7 +517,10 @@ def _prepare_rag_context(
                 "GAME RULES KNOWLEDGE:\n"
                 "- You have access to the official game rulebook. Use it to answer the user's question accurately.\n"
                 "- Stay in character while explaining the rules — translate rulebook language into your world's vocabulary.\n"
-                "- Never mention 'rulebook', 'manual', 'document' or any technical term directly.\n\n"
+                "- Never mention 'rulebook', 'manual', 'document' or any technical term directly.\n"
+                "- Each excerpt includes the page number and image filenames (e.g. [Images: 10.01.png, 11.01.png]).\n"
+                "- ALWAYS end your answer citing the page AND the images in your character's voice. Example: 'You can find this on page 10, illustrated in figures 10.01 and 11.01.' If no images are listed for that excerpt, cite only the page.\n"
+                "- The image filenames follow the pattern PageNumber.FigureNumber.png — translate them as 'figure X.XX' or 'illustration X.XX' naturally.\n\n"
                 "STRICT RULES:\n"
                 "- NEVER break character.\n"
                 f"- ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
@@ -514,6 +529,8 @@ def _prepare_rag_context(
             system_prompt = (
                 "You are a helpful game rules assistant for Creative Games Studio (CGS).\n"
                 "Use the provided rulebook excerpts to answer the player's question accurately and clearly.\n"
+                "Each excerpt includes the page number and image filenames (e.g. [Images: 10.01.png]).\n"
+                "ALWAYS end your answer citing the page AND images: 'You can find this on page X, illustrated in figures X.01 and X.02.' If no images are listed, cite only the page.\n"
                 "Keep answers concise and easy to understand.\n"
                 f"ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
             )
@@ -911,6 +928,12 @@ def generate_rag_stream(
             category = future_category.result()
             detected_language = language if language else future_lang.result()
         enhanced_query = question
+        logger.info(
+            "Fast path: category=%s, project=%s, question=%s",
+            category,
+            _project,
+            question[:50],
+        )
     else:
         # Parallelize analyze_context and classify_question to reduce latency
         with ThreadPoolExecutor(max_workers=2) as executor:
