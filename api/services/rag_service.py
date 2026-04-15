@@ -485,6 +485,8 @@ def _prepare_rag_context(
                     "title": f"{c.get('section_title', 'Manual')} (p.{c.get('page_number', '?')})",
                     "chunk": c["chunk"],
                     "distance": c["distance"],
+                    "image_path": c.get("image_path", ""),
+                    "page_number": c.get("page_number"),
                 }
                 for c in manual_chunks
             ],
