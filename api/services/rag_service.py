@@ -1014,7 +1014,7 @@ def generate_rag_stream(
         yield f"data: {json.dumps({'type': 'done', 'chat_id': ''})}\n\n"
         return
 
-    yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': ctx['sources'], 'model': model, 'language': detected_language})}\n\n"
+        yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': ctx['sources'], 'model': model, 'language': detected_language, 'project': _project, 'region': _region})}\n\n"
 
     llm_messages = [{"role": "system", "content": ctx["system_prompt"]}]
     if chat_history:
