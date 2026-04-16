@@ -163,7 +163,8 @@ These contain possessive pronouns or refer to a specific person's situation:
 - "quero trocar meu endereço", "quero cancelar meu pedido"
 - Any question with "meu/minha/my" + order/delivery/shipment/pedido/entrega
 - Any question asking about a SPECIFIC order status, tracking, or shipment
-These ALWAYS need project AND region. If EITHER is missing, set status to "need_info".
+These ALWAYS need BOTH project AND region confirmed. If EITHER is missing, set status to "need_info".
+IMPORTANT: Even if the user mentions a project name in their message (e.g. "meu pedido Battleforge"), that does NOT count as confirmed project context — you must still ask for the missing region. The project and region must both be explicitly confirmed before answering personal questions.
 
 GAME RULES questions (how to play, mechanics, setup, rules, components):
 - If project is known (from payload or history): status = "ready"
