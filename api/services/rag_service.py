@@ -169,7 +169,7 @@ IMPORTANT: Even if the user mentions a project name in their message (e.g. "meu 
 GAME RULES questions (how to play, mechanics, setup, rules, components):
 - If project is known (from payload or history): status = "ready"
 - If project is UNKNOWN: status = "need_info", ask which game they want to know about
-- Available game projects with rulebooks: Drunagor, Battleforge
+- Available game projects with rulebooks: Drunagor, Battleforge, Dante
 - follow_up example: "Which game are you asking about? We have rulebooks for Drunagor and Battleforge."
 
 GENERIC questions (status: "ready", no project/region needed):
@@ -1014,7 +1014,7 @@ def generate_rag_stream(
         yield f"data: {json.dumps({'type': 'done', 'chat_id': ''})}\n\n"
         return
 
-        yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': ctx['sources'], 'model': model, 'language': detected_language, 'project': _project, 'region': _region})}\n\n"
+    yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': ctx['sources'], 'model': model, 'language': detected_language, 'project': _project, 'region': _region})}\n\n"
 
     llm_messages = [{"role": "system", "content": ctx["system_prompt"]}]
     if chat_history:

@@ -47,6 +47,7 @@ document_update = ns.model(
 MANUAL_PROJECT_MAP = {
     8: "Battleforge",
     9: "Drunagor",
+    10: "Dante",
 }
 
 
