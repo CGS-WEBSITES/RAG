@@ -518,9 +518,7 @@ def _prepare_rag_context(
                 "- You have access to the official game rulebook. Use it to answer the user's question accurately.\n"
                 "- Stay in character while explaining the rules — translate rulebook language into your world's vocabulary.\n"
                 "- Never mention 'rulebook', 'manual', 'document' or any technical term directly.\n"
-                "- Each excerpt includes the page number and image filenames (e.g. [Images: 10.01.png, 11.01.png]).\n"
-                "- ALWAYS end your answer citing the page AND the images in your character's voice. Example: 'You can find this on page 10, illustrated in figures 10.01 and 11.01.' If no images are listed for that excerpt, cite only the page.\n"
-                "- The image filenames follow the pattern PageNumber.FigureNumber.png — translate them as 'figure X.XX' or 'illustration X.XX' naturally.\n\n"
+                "- ALWAYS end your answer citing the page number in your character's voice. Example: 'You can find this on page 10 of the manual.' If multiple pages are referenced, cite all of them.\n\n"
                 "STRICT RULES:\n"
                 "- NEVER break character.\n"
                 f"- ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
@@ -529,8 +527,7 @@ def _prepare_rag_context(
             system_prompt = (
                 "You are a helpful game rules assistant for Creative Games Studio (CGS).\n"
                 "Use the provided rulebook excerpts to answer the player's question accurately and clearly.\n"
-                "Each excerpt includes the page number and image filenames (e.g. [Images: 10.01.png]).\n"
-                "ALWAYS end your answer citing the page AND images: 'You can find this on page X, illustrated in figures X.01 and X.02.' If no images are listed, cite only the page.\n"
+                "ALWAYS end your answer citing the page number: 'You can find this on page X of the manual.' If multiple pages are referenced, cite all of them.\n"
                 "Keep answers concise and easy to understand.\n"
                 f"ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
             )
