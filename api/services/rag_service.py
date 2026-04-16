@@ -165,6 +165,12 @@ These contain possessive pronouns or refer to a specific person's situation:
 - Any question asking about a SPECIFIC order status, tracking, or shipment
 These ALWAYS need project AND region. If EITHER is missing, set status to "need_info".
 
+GAME RULES questions (how to play, mechanics, setup, rules, components):
+- If project is known (from payload or history): status = "ready"
+- If project is UNKNOWN: status = "need_info", ask which game they want to know about
+- Available game projects with rulebooks: Drunagor, Battleforge
+- follow_up example: "Which game are you asking about? We have rulebooks for Drunagor and Battleforge."
+
 GENERIC questions (status: "ready", no project/region needed):
 These ask about policies, processes, or how to handle situations in general:
 - "como funciona o reembolso?", "qual a política de troca?"
@@ -179,7 +185,7 @@ OTHER RULES:
 - If a follow-up changes the project or region, update those fields accordingly.
 - The follow_up question must be concise, friendly, and list available options.
 - Always respond in the same language as the user's FIRST question.
-- Available projects: Drunagor, Dante, ForFun, Oathfall, Magnus, Frosthaven.
+- Available projects: Drunagor, Dante, ForFun, Oathfall, Magnus, Frosthaven, Battleforge.
 - Available regions: Brasil, Europa, EUA, Ásia, Oceania.
 - When in doubt between personal and generic, choose "need_info" — it's better to ask than to guess wrong."""
 
@@ -464,7 +470,6 @@ def _prepare_rag_context(
             if page:
                 label += f" (page {page})"
 
-            # Build image reference string
             image_ref = ""
             if image_path:
                 images = [img.strip() for img in image_path.split(",") if img.strip()]
@@ -557,7 +562,6 @@ def _prepare_rag_context(
     logistics_chunks = []
     if include_logistics:
         if project and region:
-            # Direct lookup by project+region — bypass semantic search and relevance filter
             logistics_chunks = get_logistics_by_project_region(project, region)
         else:
             logistics_limit = 3 if project or region else 1
@@ -604,6 +608,23 @@ def _prepare_rag_context(
     voice_tone_docs = get_all_by_source("voice_tone")
 
     if not ticket_chunks and not logistics_chunks:
+        NOT_FOUND_MESSAGES = {
+            "pt": "Não encontrei informações relevantes sobre isso na base de conhecimento.",
+            "en": "No relevant documents found in the knowledge base.",
+            "es": "No encontré información relevante sobre esto en la base de conocimiento.",
+            "de": "Ich habe keine relevanten Informationen dazu in der Wissensbasis gefunden.",
+            "fr": "Aucune information pertinente trouvée dans la base de connaissances.",
+            "it": "Non ho trovato informazioni rilevanti su questo nella base di conoscenza.",
+            "ja": "ナレッジベースに関連情報が見つかりませんでした。",
+            "zh": "知识库中未找到相关信息。",
+            "ko": "지식 베이스에서 관련 정보를 찾을 수 없습니다。",
+            "ru": "В базе знаний не найдено соответствующей информации.",
+            "nl": "Geen relevante informatie gevonden in de kennisbank.",
+            "pl": "Nie znaleziono odpowiednich informacji w bazie wiedzy.",
+        }
+        not_found_msg = NOT_FOUND_MESSAGES.get(
+            language or "en", NOT_FOUND_MESSAGES["en"]
+        )
         return {"empty": True, "model": model, "not_found_msg": not_found_msg}
 
     voice_tone_text = "\n".join(
@@ -649,7 +670,7 @@ def _prepare_rag_context(
         "it": "Non ho trovato informazioni rilevanti su questo nella base di conoscenza.",
         "ja": "ナレッジベースに関連情報が見つかりませんでした。",
         "zh": "知识库中未找到相关信息。",
-        "ko": "지식 베이스에서 관련 정보를 찾을 수 없습니다.",
+        "ko": "지식 베이스에서 관련 정보를 찾을 수 없습니다。",
         "ru": "В базе знаний не найдено соответствующей информации.",
         "nl": "Geen relevante informatie gevonden in de kennisbank.",
         "pl": "Nie znaleziono odpowiednich informacji w bazie wiedzy.",
@@ -932,7 +953,6 @@ def generate_rag_stream(
             question[:50],
         )
     else:
-        # Parallelize analyze_context and classify_question to reduce latency
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_analysis = executor.submit(analyze_context, question, chat_history)
             future_category = executor.submit(classify_question, question)
@@ -972,7 +992,6 @@ def generate_rag_stream(
         _region = analysis.get("region")
         enhanced_query = analysis.get("enhanced_query", question)
 
-    # Parallelize semantic_search and category classification
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_ctx = executor.submit(
             _prepare_rag_context,
@@ -1193,7 +1212,6 @@ def generate_rag_response(
             "refinement_round": refinement_round,
         }
 
-    # If project and region are already provided, skip context analysis entirely
     _project = project
     _region = region
     if _project and _region:
