@@ -121,8 +121,11 @@ class RAGPopularQuestions(Resource):
                     """
                     SELECT question, COUNT(*) as total
                     FROM chat_history
-                    WHERE length(question) > 10
-                        AND question NOT IN ('Drunagor', 'Battleforge', 'Dante', 'Brasil', 'Europa', 'EUA')
+                    WHERE length(question) > 15
+                        AND language = 'en'
+                        AND category NOT IN ('outro')
+                        AND question ~ '[?!]|how|what|where|when|why|can |do |is |are |my |want|need|refund|delay|track|cancel|address'
+                        AND question !~ '^(Drunagor|Battleforge|Dante|ForFun|Oathfall|Magnus|Frosthaven|Brasil|Europe|EUA|Asia|Oceania|Brazil)(,\s*(Drunagor|Battleforge|Dante|Brasil|Europe|EUA|Asia|Oceania|Brazil))?$'
                     GROUP BY question
                     ORDER BY total DESC
                     LIMIT 5

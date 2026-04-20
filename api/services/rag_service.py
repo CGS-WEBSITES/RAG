@@ -928,6 +928,7 @@ def generate_rag_stream(
                     sources_count=0,
                     refinement_round=refinement_round,
                     parent_message_id=parent_message_id,
+                    language=detected_language,
                 )
             except Exception as e:
                 logger.warning("Failed to save refinement chat: %s", e)
@@ -982,6 +983,7 @@ def generate_rag_stream(
                         tokens_in=0,
                         tokens_out=0,
                         sources_count=0,
+                        language=detected_language,
                     )
                 except Exception as e:
                     logger.warning("Failed to save chat history: %s", e)
@@ -1095,6 +1097,7 @@ def generate_rag_stream(
                 tokens_in=tokens_in,
                 tokens_out=tokens_out,
                 sources_count=len(ctx["ticket_chunks"]) + len(ctx["logistics_chunks"]),
+                language=detected_language,
             )
         except Exception as e:
             logger.warning("Failed to save chat history: %s", e)
@@ -1198,6 +1201,7 @@ def generate_rag_response(
                     sources_count=0,
                     refinement_round=refinement_round,
                     parent_message_id=parent_message_id,
+                    language=detected_language,
                 )
             except Exception as e:
                 logger.warning("Failed to save refinement chat: %s", e)
