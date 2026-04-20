@@ -3,6 +3,7 @@ from flask_restx import Namespace, Resource, fields
 
 from api.services.history_service import update_satisfaction
 from api.services.rag_service import generate_rag_response, generate_rag_stream
+from api.database import get_cursor
 
 ns = Namespace("rag", description="RAG - Perguntas e respostas com IA")
 
@@ -107,6 +108,30 @@ class RAGTicketsStream(Resource):
                 "X-Accel-Buffering": "no",
             },
         )
+
+
+@ns.route("/popular-questions")
+class RAGPopularQuestions(Resource):
+    @ns.doc("popular_questions")
+    def get(self):
+        """Return top 5 most asked questions (excluding suggestion clicks and short inputs)"""
+        try:
+            with get_cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT question, COUNT(*) as total
+                    FROM chat_history
+                    WHERE length(question) > 10
+                        AND question NOT IN ('Drunagor', 'Battleforge', 'Dante', 'Brasil', 'Europa', 'EUA')
+                    GROUP BY question
+                    ORDER BY total DESC
+                    LIMIT 5
+                """
+                )
+                rows = cur.fetchall()
+                return {"questions": [r["question"] for r in rows]}, 200
+        except Exception as e:
+            return {"questions": []}, 200
 
 
 @ns.route("/satisfaction")
