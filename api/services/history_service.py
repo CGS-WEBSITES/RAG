@@ -18,6 +18,7 @@ def save_chat(
     sources_count: int = 0,
     refinement_round: int = 0,
     parent_message_id: str | None = None,
+    language: str | None = None,
 ) -> str:
     with get_cursor() as cur:
         cur.execute(
@@ -25,8 +26,8 @@ def save_chat(
             INSERT INTO chat_history
                 (session_id, question, answer, category, model, provider,
                   tokens_in, tokens_out, sources_count,
-                  refinement_round, parent_message_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                  refinement_round, parent_message_id, language)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -41,6 +42,7 @@ def save_chat(
                 sources_count,
                 refinement_round,
                 parent_message_id,
+                language,
             ),
         )
         row = cur.fetchone()

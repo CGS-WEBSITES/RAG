@@ -163,7 +163,14 @@ These contain possessive pronouns or refer to a specific person's situation:
 - "quero trocar meu endereço", "quero cancelar meu pedido"
 - Any question with "meu/minha/my" + order/delivery/shipment/pedido/entrega
 - Any question asking about a SPECIFIC order status, tracking, or shipment
-These ALWAYS need project AND region. If EITHER is missing, set status to "need_info".
+These ALWAYS need BOTH project AND region confirmed. If EITHER is missing, set status to "need_info".
+IMPORTANT: Even if the user mentions a project name in their message (e.g. "meu pedido Battleforge"), that does NOT count as confirmed project context — you must still ask for the missing region. The project and region must both be explicitly confirmed before answering personal questions.
+
+GAME RULES questions (how to play, mechanics, setup, rules, components):
+- If project is known (from payload or history): status = "ready"
+- If project is UNKNOWN: status = "need_info", ask which game they want to know about
+- Available game projects with rulebooks: Drunagor, Battleforge, Dante
+- follow_up example: "Which game are you asking about? We have rulebooks for Drunagor and Battleforge."
 
 GENERIC questions (status: "ready", no project/region needed):
 These ask about policies, processes, or how to handle situations in general:
@@ -179,7 +186,7 @@ OTHER RULES:
 - If a follow-up changes the project or region, update those fields accordingly.
 - The follow_up question must be concise, friendly, and list available options.
 - Always respond in the same language as the user's FIRST question.
-- Available projects: Drunagor, Dante, ForFun, Oathfall, Magnus, Frosthaven.
+- Available projects: Drunagor, Dante, ForFun, Oathfall, Magnus, Frosthaven, Battleforge.
 - Available regions: Brasil, Europa, EUA, Ásia, Oceania.
 - When in doubt between personal and generic, choose "need_info" — it's better to ask than to guess wrong."""
 
@@ -464,7 +471,6 @@ def _prepare_rag_context(
             if page:
                 label += f" (page {page})"
 
-            # Build image reference string
             image_ref = ""
             if image_path:
                 images = [img.strip() for img in image_path.split(",") if img.strip()]
@@ -518,9 +524,7 @@ def _prepare_rag_context(
                 "- You have access to the official game rulebook. Use it to answer the user's question accurately.\n"
                 "- Stay in character while explaining the rules — translate rulebook language into your world's vocabulary.\n"
                 "- Never mention 'rulebook', 'manual', 'document' or any technical term directly.\n"
-                "- Each excerpt includes the page number and image filenames (e.g. [Images: 10.01.png, 11.01.png]).\n"
-                "- ALWAYS end your answer citing the page AND the images in your character's voice. Example: 'You can find this on page 10, illustrated in figures 10.01 and 11.01.' If no images are listed for that excerpt, cite only the page.\n"
-                "- The image filenames follow the pattern PageNumber.FigureNumber.png — translate them as 'figure X.XX' or 'illustration X.XX' naturally.\n\n"
+                "- ALWAYS end your answer citing the page number in your character's voice. Example: 'You can find this on page 10 of the manual.' If multiple pages are referenced, cite all of them.\n\n"
                 "STRICT RULES:\n"
                 "- NEVER break character.\n"
                 f"- ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
@@ -529,8 +533,7 @@ def _prepare_rag_context(
             system_prompt = (
                 "You are a helpful game rules assistant for Creative Games Studio (CGS).\n"
                 "Use the provided rulebook excerpts to answer the player's question accurately and clearly.\n"
-                "Each excerpt includes the page number and image filenames (e.g. [Images: 10.01.png]).\n"
-                "ALWAYS end your answer citing the page AND images: 'You can find this on page X, illustrated in figures X.01 and X.02.' If no images are listed, cite only the page.\n"
+                "ALWAYS end your answer citing the page number: 'You can find this on page X of the manual.' If multiple pages are referenced, cite all of them.\n"
                 "Keep answers concise and easy to understand.\n"
                 f"ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
             )
@@ -560,7 +563,6 @@ def _prepare_rag_context(
     logistics_chunks = []
     if include_logistics:
         if project and region:
-            # Direct lookup by project+region — bypass semantic search and relevance filter
             logistics_chunks = get_logistics_by_project_region(project, region)
         else:
             logistics_limit = 3 if project or region else 1
@@ -607,6 +609,23 @@ def _prepare_rag_context(
     voice_tone_docs = get_all_by_source("voice_tone")
 
     if not ticket_chunks and not logistics_chunks:
+        NOT_FOUND_MESSAGES = {
+            "pt": "Não encontrei informações relevantes sobre isso na base de conhecimento.",
+            "en": "No relevant documents found in the knowledge base.",
+            "es": "No encontré información relevante sobre esto en la base de conocimiento.",
+            "de": "Ich habe keine relevanten Informationen dazu in der Wissensbasis gefunden.",
+            "fr": "Aucune information pertinente trouvée dans la base de connaissances.",
+            "it": "Non ho trovato informazioni rilevanti su questo nella base di conoscenza.",
+            "ja": "ナレッジベースに関連情報が見つかりませんでした。",
+            "zh": "知识库中未找到相关信息。",
+            "ko": "지식 베이스에서 관련 정보를 찾을 수 없습니다。",
+            "ru": "В базе знаний не найдено соответствующей информации.",
+            "nl": "Geen relevante informatie gevonden in de kennisbank.",
+            "pl": "Nie znaleziono odpowiednich informacji w bazie wiedzy.",
+        }
+        not_found_msg = NOT_FOUND_MESSAGES.get(
+            language or "en", NOT_FOUND_MESSAGES["en"]
+        )
         return {"empty": True, "model": model, "not_found_msg": not_found_msg}
 
     voice_tone_text = "\n".join(
@@ -652,7 +671,7 @@ def _prepare_rag_context(
         "it": "Non ho trovato informazioni rilevanti su questo nella base di conoscenza.",
         "ja": "ナレッジベースに関連情報が見つかりませんでした。",
         "zh": "知识库中未找到相关信息。",
-        "ko": "지식 베이스에서 관련 정보를 찾을 수 없습니다.",
+        "ko": "지식 베이스에서 관련 정보를 찾을 수 없습니다。",
         "ru": "В базе знаний не найдено соответствующей информации.",
         "nl": "Geen relevante informatie gevonden in de kennisbank.",
         "pl": "Nie znaleziono odpowiednich informacji w bazie wiedzy.",
@@ -909,6 +928,7 @@ def generate_rag_stream(
                     sources_count=0,
                     refinement_round=refinement_round,
                     parent_message_id=parent_message_id,
+                    language=detected_language,
                 )
             except Exception as e:
                 logger.warning("Failed to save refinement chat: %s", e)
@@ -935,7 +955,6 @@ def generate_rag_stream(
             question[:50],
         )
     else:
-        # Parallelize analyze_context and classify_question to reduce latency
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_analysis = executor.submit(analyze_context, question, chat_history)
             future_category = executor.submit(classify_question, question)
@@ -964,6 +983,7 @@ def generate_rag_stream(
                         tokens_in=0,
                         tokens_out=0,
                         sources_count=0,
+                        language=detected_language,
                     )
                 except Exception as e:
                     logger.warning("Failed to save chat history: %s", e)
@@ -975,7 +995,6 @@ def generate_rag_stream(
         _region = analysis.get("region")
         enhanced_query = analysis.get("enhanced_query", question)
 
-    # Parallelize semantic_search and category classification
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_ctx = executor.submit(
             _prepare_rag_context,
@@ -997,7 +1016,7 @@ def generate_rag_stream(
         yield f"data: {json.dumps({'type': 'done', 'chat_id': ''})}\n\n"
         return
 
-    yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': ctx['sources'], 'model': model, 'language': detected_language})}\n\n"
+    yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': ctx['sources'], 'model': model, 'language': detected_language, 'project': _project, 'region': _region})}\n\n"
 
     llm_messages = [{"role": "system", "content": ctx["system_prompt"]}]
     if chat_history:
@@ -1078,6 +1097,7 @@ def generate_rag_stream(
                 tokens_in=tokens_in,
                 tokens_out=tokens_out,
                 sources_count=len(ctx["ticket_chunks"]) + len(ctx["logistics_chunks"]),
+                language=detected_language,
             )
         except Exception as e:
             logger.warning("Failed to save chat history: %s", e)
@@ -1181,6 +1201,7 @@ def generate_rag_response(
                     sources_count=0,
                     refinement_round=refinement_round,
                     parent_message_id=parent_message_id,
+                    language=detected_language,
                 )
             except Exception as e:
                 logger.warning("Failed to save refinement chat: %s", e)
@@ -1196,7 +1217,6 @@ def generate_rag_response(
             "refinement_round": refinement_round,
         }
 
-    # If project and region are already provided, skip context analysis entirely
     _project = project
     _region = region
     if _project and _region:

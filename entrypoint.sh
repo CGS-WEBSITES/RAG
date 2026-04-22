@@ -30,13 +30,41 @@ BEGIN
             ),
             formatting => ai.formatting_python_template('\$title: \$chunk')
         );
-        RAISE NOTICE 'Vectorizer criado com sucesso';
+        RAISE NOTICE 'Vectorizer documents criado com sucesso';
     ELSE
-        RAISE NOTICE 'Vectorizer já existe — pulando';
+        RAISE NOTICE 'Vectorizer documents já existe — pulando';
     END IF;
 END
 \$\$;
-" 2>&1 || echo "    Erro ao configurar vectorizer, continuando..."
+" 2>&1 || echo "    Erro ao configurar vectorizer documents, continuando..."
+
+echo "==> Configurando vectorizer de manuais..."
+PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -c "
+DO \$\$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ai.vectorizer WHERE source_table = 'manual_segments') THEN
+        PERFORM ai.create_vectorizer(
+            'public.manual_segments'::regclass,
+            loading => ai.loading_column('content'),
+            embedding => ai.embedding_openai(
+                '${EMBEDDING_MODEL:-text-embedding-3-small}',
+                ${EMBEDDING_DIMENSIONS:-768}
+            ),
+            chunking => ai.chunking_recursive_character_text_splitter(
+                chunk_size => 800,
+                chunk_overlap => 200,
+                separators => array[E'\n\n', E'\n', '.', '?', '!', ' ', '']
+            ),
+            formatting => ai.formatting_python_template('\$section_title: \$chunk')
+        );
+        RAISE NOTICE 'Vectorizer manual_segments criado com sucesso';
+    ELSE
+        RAISE NOTICE 'Vectorizer manual_segments já existe — pulando';
+    END IF;
+END
+\$\$;
+" 2>&1 || echo "    Erro ao configurar vectorizer manual_segments, continuando..."
+
 echo "==> Populando dados iniciais..."
 python3 -m scripts.seed_data
 echo "==> Iniciando API com Gunicorn + Eventlet..."
