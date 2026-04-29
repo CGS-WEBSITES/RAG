@@ -1,5 +1,5 @@
 import json
-from flask import Response, request
+from flask import Response, request, stream_with_context
 from flask_restx import Namespace, Resource, fields
 
 from api.services.history_service import update_satisfaction
@@ -157,7 +157,7 @@ class DrunagorRules(Resource):
                     chat_history=chat_history,
                     language=language,
                     project="Drunagor",
-                    region=None,
+                    region="global",
                 ):
                     yield chunk
             except Exception as e:
