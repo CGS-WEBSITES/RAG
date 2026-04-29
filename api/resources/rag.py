@@ -1,3 +1,4 @@
+import json
 from flask import Response, request
 from flask_restx import Namespace, Resource, fields
 
@@ -122,10 +123,10 @@ class RAGPopularQuestions(Resource):
                     SELECT question, COUNT(*) as total
                     FROM chat_history
                     WHERE length(question) > 15
-                        AND language = 'en'
-                        AND category NOT IN ('outro')
-                        AND question ~ '[?!]|how|what|where|when|why|can |do |is |are |my |want|need|refund|delay|track|cancel|address'
-                        AND question !~ '^(Drunagor|Battleforge|Dante|ForFun|Oathfall|Magnus|Frosthaven|Brasil|Europe|EUA|Asia|Oceania|Brazil)(,\s*(Drunagor|Battleforge|Dante|Brasil|Europe|EUA|Asia|Oceania|Brazil))?$'
+                      AND language = 'en'
+                      AND category NOT IN ('outro')
+                      AND question ~ '[?!]|how|what|where|when|why|can |do |is |are |my |want|need|refund|delay|track|cancel|address'
+                      AND question !~ '^(Drunagor|Battleforge|Dante|ForFun|Oathfall|Magnus|Frosthaven|Brasil|Europe|EUA|Asia|Oceania|Brazil)(,\s*(Drunagor|Battleforge|Dante|Brasil|Europe|EUA|Asia|Oceania|Brazil))?$'
                     GROUP BY question
                     ORDER BY total DESC
                     LIMIT 5
@@ -135,6 +136,44 @@ class RAGPopularQuestions(Resource):
                 return {"questions": [r["question"] for r in rows]}, 200
         except Exception as e:
             return {"questions": []}, 200
+
+
+@ns.route("/drunagor/rules")
+class DrunagorRules(Resource):
+    @ns.doc("drunagor_rules_stream")
+    def post(self):
+        data = request.get_json(force=True, silent=True) or {}
+        question = (data.get("question") or "").strip()
+        session_id = data.get("session_id") or ""
+        language = data.get("language") or None
+        chat_history = data.get("chat_history") or []
+
+        if not question:
+            return {"error": "question is required"}, 400
+
+        def stream():
+            try:
+                for chunk in generate_rag_stream(
+                    question=question,
+                    session_id=session_id,
+                    chat_history=chat_history,
+                    language=language,
+                    project="Drunagor",
+                    region=None,
+                ):
+                    yield chunk
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        return Response(
+            stream_with_context(stream()),
+            mimetype="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+                "Access-Control-Allow-Origin": "*",
+            },
+        )
 
 
 @ns.route("/satisfaction")
