@@ -118,20 +118,18 @@ class RAGPopularQuestions(Resource):
         """Return top 5 most asked questions (excluding suggestion clicks and short inputs)"""
         try:
             with get_cursor() as cur:
-                cur.execute(
-                    """
+                cur.execute("""
                     SELECT question, COUNT(*) as total
                     FROM chat_history
                     WHERE length(question) > 15
-                      AND language = 'en'
-                      AND category NOT IN ('outro')
-                      AND question ~ '[?!]|how|what|where|when|why|can |do |is |are |my |want|need|refund|delay|track|cancel|address'
-                      AND question !~ '^(Drunagor|Battleforge|Dante|ForFun|Oathfall|Magnus|Frosthaven|Brasil|Europe|EUA|Asia|Oceania|Brazil)(,\s*(Drunagor|Battleforge|Dante|Brasil|Europe|EUA|Asia|Oceania|Brazil))?$'
+                        AND language = 'en'
+                        AND category NOT IN ('outro')
+                        AND question ~ '[?!]|how|what|where|when|why|can |do |is |are |my |want|need|refund|delay|track|cancel|address'
+                        AND question !~ '^(Drunagor|Battleforge|Dante|ForFun|Oathfall|Magnus|Frosthaven|Brasil|Europe|EUA|Asia|Oceania|Brazil)(,\s*(Drunagor|Battleforge|Dante|Brasil|Europe|EUA|Asia|Oceania|Brazil))?$'
                     GROUP BY question
                     ORDER BY total DESC
                     LIMIT 5
-                """
-                )
+                """)
                 rows = cur.fetchall()
                 return {"questions": [r["question"] for r in rows]}, 200
         except Exception as e:
