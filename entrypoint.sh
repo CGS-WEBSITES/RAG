@@ -67,12 +67,12 @@ END
 
 echo "==> Populando dados iniciais..."
 python3 -m scripts.seed_data
-echo "==> Iniciando API com Gunicorn + Eventlet..."
+echo "==> Iniciando API com Gunicorn + gthread..."
 exec gunicorn \
     --bind 0.0.0.0:5000 \
-    --worker-class eventlet \
+    --worker-class gthread \
     --workers 1 \
-    --worker-connections 100 \
+    --threads 4 \
     --timeout 600 \
     --log-level info \
     "api.app:create_app()"
