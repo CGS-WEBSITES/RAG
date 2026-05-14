@@ -530,16 +530,17 @@ def _prepare_rag_context(
                 "- Do NOT add flavor text, dramatic preamble, or restate the question.\n"
                 "- Do NOT add context the user did not ask for.\n"
                 "- Lists: maximum 5 items, each one line.\n"
+                "- Brevity beats flavor. A short in-character answer is better than a long one.\n"
                 "\n"
                 "EXAMPLES (match this brevity):\n"
                 "- Q: 'How many players?' → A: 'Drunagor is played by 1 to 5 heroes. You can find this on page 4 of the manual.'\n"
                 "- Q: 'How long does a game last?' → A: 'A session takes about 60 to 90 minutes. See page 4 of the manual.'\n"
                 "- Q: 'What dice do I roll for attacks?' → A: 'Attacks use the red action dice — one per attack power. Details on page 22 of the manual.'\n"
                 "\n"
-                "- Never mention 'rulebook', 'manual document', or any technical term — but you MAY say 'page X of the manual' as instructed below.\n"
+                "- Never mention 'rulebook', 'document' or any technical term directly. You MAY say 'page X of the manual' as instructed below.\n"
                 "- ALWAYS end your answer citing the page number in your character's voice. Example: 'You can find this on page 10 of the manual.' If multiple pages are referenced, cite all of them.\n\n"
                 "STRICT RULES:\n"
-                "- NEVER break character — but brevity beats flavor. A short in-character answer is better than a long one.\n"
+                "- NEVER break character — but brevity beats flavor.\n"
                 f"- ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
             )
         else:
@@ -572,6 +573,7 @@ def _prepare_rag_context(
             "user_prompt": user_prompt,
             "ticket_chunks": [],
             "logistics_chunks": [],
+            "category": category,
         }
 
     ticket_chunks = semantic_search(question, limit=max_chunks, source="tickets")
@@ -793,6 +795,7 @@ def _prepare_rag_context(
             "tickets": sanitized_tickets,
             "logistics": _build_sources(logistics_chunks),
         },
+        "category": category,
     }
 
 
@@ -1050,6 +1053,8 @@ def generate_rag_stream(
                 llm_messages.append({"role": role, "content": content})
     llm_messages.append({"role": "user", "content": ctx["user_prompt"]})
 
+    temperature = 0.3 if ctx.get("category") == "game_rules" else 0.7
+
     full_answer = []
     tokens_in = 0
     tokens_out = 0
@@ -1060,7 +1065,7 @@ def generate_rag_stream(
             stream = client.chat.completions.create(
                 model=model,
                 messages=llm_messages,
-                temperature=0.7,
+                temperature=temperature,
                 top_p=0.9,
                 max_tokens=1024,
                 stream=True,
@@ -1082,7 +1087,7 @@ def generate_rag_stream(
                     "messages": llm_messages,
                     "stream": True,
                     "options": {
-                        "temperature": 0.7,
+                        "temperature": temperature,
                         "top_p": 0.9,
                         "num_predict": 1024,
                         "num_ctx": 4096,
@@ -1310,13 +1315,15 @@ def generate_rag_response(
                 llm_messages.append({"role": role, "content": content})
     llm_messages.append({"role": "user", "content": ctx["user_prompt"]})
 
+    temperature = 0.3 if ctx.get("category") == "game_rules" else 0.7
+
     try:
         if Config.is_openai_llm():
             client = _get_openai_client()
             response = client.chat.completions.create(
                 model=model,
                 messages=llm_messages,
-                temperature=0.7,
+                temperature=temperature,
                 top_p=0.9,
                 max_tokens=1024,
             )
@@ -1331,7 +1338,7 @@ def generate_rag_response(
                     "messages": llm_messages,
                     "stream": False,
                     "options": {
-                        "temperature": 0.7,
+                        "temperature": temperature,
                         "top_p": 0.9,
                         "num_predict": 1024,
                         "num_ctx": 4096,
