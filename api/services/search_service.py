@@ -247,6 +247,46 @@ def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dic
                     if len(rows) >= limit:
                         break
 
+    if rows:
+        missing_image_pages = {
+            (row["project"], row["page_number"])
+            for row in rows
+            if not row["image_path"] and row["page_number"] is not None
+        }
+        if missing_image_pages:
+            page_filters = " OR ".join(["(project = %s AND page_number = %s)"] * len(missing_image_pages))
+            params = []
+            for page_project, page_number in missing_image_pages:
+                params.extend([page_project, page_number])
+            with get_cursor() as cur:
+                cur.execute(
+                    f"""
+                        SELECT project, page_number, image_path
+                        FROM public.manual_segments
+                        WHERE image_path IS NOT NULL
+                          AND image_path <> ''
+                          AND ({page_filters})
+                        ORDER BY project, page_number, id
+                    """,
+                    params,
+                )
+                images_by_page = {}
+                for image_row in cur.fetchall():
+                    key = (image_row["project"], image_row["page_number"])
+                    current = images_by_page.setdefault(key, [])
+                    current.extend(
+                        img.strip()
+                        for img in str(image_row["image_path"]).split(",")
+                        if img.strip()
+                    )
+
+            for row in rows:
+                if row["image_path"] or row["page_number"] is None:
+                    continue
+                images = images_by_page.get((row["project"], row["page_number"]))
+                if images:
+                    row["image_path"] = ",".join(dict.fromkeys(images))
+
     return [
         {
             "id": row["id"],
