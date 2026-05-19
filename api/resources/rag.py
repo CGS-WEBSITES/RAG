@@ -18,6 +18,9 @@ ticket_input = ns.model(
         "language": fields.String(
             default=None, description="Idioma detectado pelo frontend"
         ),
+        "product_language": fields.String(
+            default=None, description="Idioma/versão do produto ou pacote"
+        ),
         "refinement_round": fields.Integer(
             default=0, description="Rodada de refinamento"
         ),
@@ -32,6 +35,17 @@ ticket_input = ns.model(
         ),
     },
 )
+
+
+def _get_product_language(data: dict) -> str | None:
+    return (
+        data.get("product_language")
+        or data.get("productLanguage")
+        or data.get("package_language")
+        or data.get("packageLanguage")
+        or data.get("item_language")
+        or data.get("itemLanguage")
+    )
 
 satisfaction_input = ns.model(
     "SatisfactionInput",
@@ -64,6 +78,7 @@ class RAGTickets(Resource):
                 language=data.get("language"),
                 project=data.get("project"),
                 region=data.get("region"),
+                product_language=_get_product_language(data),
                 refinement_round=data.get("refinement_round", 0),
                 parent_message_id=data.get("parent_message_id"),
                 original_question=data.get("original_question"),
@@ -98,6 +113,7 @@ class RAGTicketsStream(Resource):
                 language=data.get("language"),
                 project=data.get("project"),
                 region=data.get("region"),
+                product_language=_get_product_language(data),
                 refinement_round=data.get("refinement_round", 0),
                 parent_message_id=data.get("parent_message_id"),
                 original_question=data.get("original_question"),

@@ -23,6 +23,34 @@ MAX_CHUNK_LENGTH = 500
 RELEVANCE_THRESHOLD = 1.5
 MAX_REFINEMENT_ROUNDS = 2
 SUPPORT_URL = "https://newaccount1620866477944.freshdesk.com/support/tickets/new"
+LOGISTICS_CONTEXT_CATEGORIES = {
+    "atraso_entrega",
+    "status_pedido",
+    "rastreamento",
+}
+
+GLOBAL_RESPONSE_STYLE = """
+RESPONSE STYLE (strict):
+- Be direct first, in character second. The answer must solve the user's request before adding any flavor.
+- Use only about 10% of the previous character flavor: at most one short in-character phrase per answer.
+- No dramatic preambles, no long metaphors, no ceremonial openings, no restating the question.
+- Do not add a decorative closing line after the practical answer.
+- Do not translate shipping/support facts into fantasy metaphors. Use plain terms like order, package, delivered, customs, tracking.
+- Prefer 1 short paragraph or 2-4 bullets. Use more only when the user explicitly asks for detail.
+- If the user is confused, answer with clear steps.
+- For Discord, keep the answer easy to read on a phone.
+"""
+
+GAME_RULES_RESPONSE_STYLE = """
+GAME RULES RESPONSE STYLE (strict about clarity, flexible about length):
+- Give the correct rule answer, even if it needs more text.
+- For simple questions, answer in 2-5 direct lines.
+- For complex rules, use clear steps, conditions, exceptions, and examples as needed.
+- Use almost no character flavor. Clarity and correctness beat persona.
+- Start with the rule/action, not with a greeting or lore.
+- If the user asks "how do I attack?", give the steps directly.
+- Only add page references when the provided manual excerpt includes a page.
+"""
 
 CATEGORIES = [
     "atraso_entrega",
@@ -68,6 +96,132 @@ def _get_openai_client() -> OpenAI:
             raise RuntimeError("OPENAI_API_KEY não configurada no .env")
         _openai_client = OpenAI(api_key=Config.OPENAI_API_KEY)
     return _openai_client
+
+
+def _build_history_messages(
+    chat_history: list[dict] | None,
+    current_question: str,
+    limit: int = 4,
+) -> list[dict[str, str]]:
+    if not chat_history:
+        return []
+
+    messages = []
+    current = (current_question or "").strip()
+    for msg in chat_history[-limit:]:
+        role = msg.get("role", "user")
+        content = (msg.get("content") or "").strip()
+        if not content or role not in ("user", "assistant"):
+            continue
+        if role == "user" and current and content == current:
+            continue
+        messages.append({"role": role, "content": content})
+    return messages
+
+
+def _missing_logistics_context(
+    project: str | None,
+    region: str | None,
+    product_language: str | None,
+) -> list[str]:
+    missing = []
+    if not project:
+        missing.append("project")
+    if not region:
+        missing.append("region")
+    if not product_language:
+        missing.append("product_language")
+    return missing
+
+
+def _build_logistics_follow_up(language: str | None, missing: list[str]) -> str:
+    lang = (language or "en").lower()
+    labels = {
+        "pt": {
+            "project": "projeto",
+            "region": "região",
+            "product_language": "idioma do produto/pacote",
+            "prefix": "Para eu verificar logística sem chutar, me diga",
+            "examples": "Exemplo: Drunagor, EUA, espanhol.",
+        },
+        "en": {
+            "project": "project",
+            "region": "region",
+            "product_language": "product/package language",
+            "prefix": "To check logistics without guessing, please tell me",
+            "examples": "Example: Drunagor, USA, Spanish.",
+        },
+    }
+    text = labels.get(lang, labels["en"])
+    items = ", ".join(text[item] for item in missing)
+    return f"{text['prefix']}: {items}. {text['examples']}"
+
+
+def _logistics_mentions_product_language(chunk: dict, product_language: str | None) -> bool:
+    if not product_language:
+        return True
+    aliases = {
+        "en": ["english", "inglês", "ingles", "en"],
+        "english": ["english", "inglês", "ingles", "en"],
+        "es": ["spanish", "español", "espanhol", "es"],
+        "spanish": ["spanish", "español", "espanhol", "es"],
+        "pt": ["portuguese", "português", "portugues", "pt"],
+        "portuguese": ["portuguese", "português", "portugues", "pt"],
+        "de": ["german", "deutsch", "alemão", "alemao", "de"],
+        "german": ["german", "deutsch", "alemão", "alemao", "de"],
+        "fr": ["french", "français", "frances", "francês", "fr"],
+        "french": ["french", "français", "frances", "francês", "fr"],
+        "it": ["italian", "italiano", "it"],
+        "italian": ["italian", "italiano", "it"],
+        "pl": ["polish", "polski", "polonês", "polones", "pl"],
+        "polish": ["polish", "polski", "polonês", "polones", "pl"],
+    }
+    requested = product_language.strip().lower()
+    terms = aliases.get(requested, [requested])
+    text = f"{chunk.get('title', '')}\n{chunk.get('chunk', '')}".lower()
+    language_markers = ("idioma", "língua", "language", "version", "versão")
+    return any(marker in text and term in text for marker in language_markers for term in terms)
+
+
+def _is_specific_pledge_status_question(question: str) -> bool:
+    text = (question or "").lower()
+    personal_terms = (
+        "my order",
+        "my package",
+        "my pledge",
+        "my shipment",
+        "my delivery",
+        "my tracking",
+        "where is my",
+        "status of my",
+        "meu pedido",
+        "minha encomenda",
+        "meu pacote",
+        "minha pledge",
+        "minha entrega",
+        "meu rastreamento",
+        "onde esta meu",
+        "onde está meu",
+        "cadê meu",
+        "cade meu",
+        "status do meu",
+    )
+    tracking_terms = ("tracking number", "codigo de rastreio", "código de rastreio")
+    return any(term in text for term in personal_terms + tracking_terms)
+
+
+def _with_support_fallback(message: str, language: str | None) -> str:
+    lang = (language or "en").lower()
+    suffixes = {
+        "pt": f"Se precisar de ajuda com um caso específico, abra um chamado no suporte: {SUPPORT_URL}",
+        "en": f"If you need help with a specific case, please open a support ticket: {SUPPORT_URL}",
+        "es": f"Si necesitas ayuda con un caso específico, abre un ticket de soporte: {SUPPORT_URL}",
+        "de": f"Wenn du Hilfe zu einem bestimmten Fall brauchst, eröffne bitte ein Support-Ticket: {SUPPORT_URL}",
+        "fr": f"Si vous avez besoin d'aide pour un cas précis, ouvrez un ticket support : {SUPPORT_URL}",
+        "it": f"Se hai bisogno di aiuto per un caso specifico, apri un ticket di supporto: {SUPPORT_URL}",
+    }
+    suffix = suffixes.get(lang, suffixes["en"])
+    return f"{message}\n\n{suffix}"
 
 
 def _filter_chunks(chunks: list[dict]) -> list[dict]:
@@ -147,14 +301,14 @@ Analyze the user's question AND the conversation history to determine if you hav
 You MUST respond in valid JSON only, no markdown, no backticks:
 
 If context is SUFFICIENT:
-{"status": "ready", "project": "detected project or null", "region": "detected region or null", "language": "ISO 639-1 language code of the FIRST user message (e.g. pt, en, es, de, fr, it, ja, zh)", "enhanced_query": "the question enriched with context from history"}
+{"status": "ready", "project": "detected project or null", "region": "detected region or null", "product_language": "detected product/package language or null", "language": "ISO 639-1 language code of the FIRST user message (e.g. pt, en, es, de, fr, it, ja, zh)", "enhanced_query": "the question enriched with context from history"}
 
 If context is MISSING:
 {"status": "need_info", "missing": ["list of what's missing"], "language": "ISO 639-1 language code of the FIRST user message", "follow_up": "a friendly question in the SAME LANGUAGE as the FIRST user message asking for the missing info"}
 
 CRITICAL RULES FOR CLASSIFICATION:
 
-PERSONAL questions (status: "need_info" if project/region unknown):
+PERSONAL questions (status: "need_info" if project, region, or product language is unknown):
 These contain possessive pronouns or refer to a specific person's situation:
 - "meu pedido", "minha entrega", "meu reembolso", "meu rastreamento"
 - "my order", "my delivery", "my refund", "my tracking"
@@ -163,8 +317,9 @@ These contain possessive pronouns or refer to a specific person's situation:
 - "quero trocar meu endereço", "quero cancelar meu pedido"
 - Any question with "meu/minha/my" + order/delivery/shipment/pedido/entrega
 - Any question asking about a SPECIFIC order status, tracking, or shipment
-These ALWAYS need BOTH project AND region confirmed. If EITHER is missing, set status to "need_info".
-IMPORTANT: Even if the user mentions a project name in their message (e.g. "meu pedido Battleforge"), that does NOT count as confirmed project context — you must still ask for the missing region. The project and region must both be explicitly confirmed before answering personal questions.
+These ALWAYS need project, region, and product/package language confirmed. If ANY is missing, set status to "need_info".
+Product/package language means the language/version of the pledged product (English, Spanish, German, French, Portuguese, etc.), NOT the language the user is writing in.
+IMPORTANT: Even if the user mentions a project name in their message (e.g. "meu pedido Battleforge"), that does NOT count as complete context — you must still ask for the missing region and/or product language. Project, region, and product language must all be explicitly confirmed before answering personal questions.
 
 GAME RULES questions (how to play, mechanics, setup, rules, components):
 - If project is known (from payload or history): status = "ready"
@@ -181,7 +336,7 @@ These ask about policies, processes, or how to handle situations in general:
 - Any question about CGS policies, processes, or general guidance
 
 OTHER RULES:
-- If the conversation history already contains project/region info, extract it and set status to "ready".
+- If the conversation history already contains project, region, or product/package language, extract it and set status to "ready" only when the required fields for the question type are present.
 - FOLLOW-UP QUESTIONS: If the user asks something short like "and in Europe?", "what about refunds?", "and for Dante?", look at the conversation history to understand the full context. Combine the follow-up with previous context in the enhanced_query. For example, if the user previously asked about Drunagor delivery in Brazil and now asks "and in Europe?", the enhanced_query should be something like "delivery status for Drunagor in Europe".
 - If a follow-up changes the project or region, update those fields accordingly.
 - The follow_up question must be concise, friendly, and list available options.
@@ -431,6 +586,7 @@ def _prepare_rag_context(
     max_chunks: int = 5,
     project: str | None = None,
     region: str | None = None,
+    product_language: str | None = None,
     category: str | None = None,
     language: str | None = None,
 ) -> dict:
@@ -459,6 +615,7 @@ def _prepare_rag_context(
             manual_not_found = not_found_messages.get(
                 language or "en", not_found_messages["en"]
             )
+            manual_not_found = _with_support_fallback(manual_not_found, language)
             return {"empty": True, "model": model, "not_found_msg": manual_not_found}
         context_parts = []
         for c in manual_chunks:
@@ -520,13 +677,16 @@ def _prepare_rag_context(
         if character_prompt:
             system_prompt = (
                 f"{character_prompt}\n\n"
+                f"{GLOBAL_RESPONSE_STYLE}\n"
+                f"{GAME_RULES_RESPONSE_STYLE}\n"
                 "GAME RULES KNOWLEDGE:\n"
                 "- You have access to the official game rulebook. Use it to answer the user's question accurately.\n"
-                "- Stay in character while explaining the rules.\n"
+                "- Stay lightly in character while explaining the rules, but do not sacrifice clarity.\n"
                 "\n"
                 "ANSWER LENGTH (STRICTLY ENFORCED — overrides any tendency to elaborate from your persona):\n"
-                "- Default to 1-2 sentences. Hard maximum: 4 sentences.\n"
-                "- Only exceed this if the user explicitly asks 'why', 'how does it work', 'explain', or 'in detail'.\n"
+                "- Simple questions: 2-5 direct lines.\n"
+                "- Complex questions: use enough steps, exceptions, and examples to be correct.\n"
+                "- Do not be short if being short would make the rule unclear or incomplete.\n"
                 "- Do NOT add flavor text, dramatic preamble, or restate the question.\n"
                 "- Do NOT add context the user did not ask for.\n"
                 "- Lists: maximum 5 items, each one line.\n"
@@ -538,7 +698,7 @@ def _prepare_rag_context(
                 "- Q: 'What dice do I roll for attacks?' → A: 'Attacks use the red action dice — one per attack power. Details on page 22 of the manual.'\n"
                 "\n"
                 "- Never mention 'rulebook', 'document' or any technical term directly. You MAY say 'page X of the manual' as instructed below.\n"
-                "- ALWAYS end your answer citing the page number in your character's voice. Example: 'You can find this on page 10 of the manual.' If multiple pages are referenced, cite all of them.\n\n"
+                "- End with page number only when page data is available. Example: 'Page 10.' If multiple pages are referenced, cite all of them.\n\n"
                 "STRICT RULES:\n"
                 "- NEVER break character — but brevity beats flavor.\n"
                 f"- ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
@@ -546,11 +706,13 @@ def _prepare_rag_context(
         else:
             system_prompt = (
                 "You are a helpful game rules assistant for Creative Games Studio (CGS).\n"
+                f"{GAME_RULES_RESPONSE_STYLE}\n"
                 "Use the provided rulebook excerpts to answer the player's question accurately and clearly.\n"
                 "\n"
                 "ANSWER LENGTH (STRICTLY ENFORCED):\n"
-                "- Default to 1-2 sentences. Hard maximum: 4 sentences.\n"
-                "- Only exceed this if the user explicitly asks 'why', 'how does it work', 'explain', or 'in detail'.\n"
+                "- Simple questions: 2-5 direct lines.\n"
+                "- Complex questions: use enough steps, exceptions, and examples to be correct.\n"
+                "- Do not be short if being short would make the rule unclear or incomplete.\n"
                 "- Do NOT restate the question or add unrequested context.\n"
                 "- Lists: maximum 5 items, each one line.\n"
                 "\n"
@@ -558,7 +720,7 @@ def _prepare_rag_context(
                 "- Q: 'How many players?' → A: 'Drunagor is played by 1 to 5 heroes. You can find this on page 4 of the manual.'\n"
                 "- Q: 'How long does a game last?' → A: 'A session takes about 60 to 90 minutes. See page 4 of the manual.'\n"
                 "\n"
-                "ALWAYS end your answer citing the page number: 'You can find this on page X of the manual.' If multiple pages are referenced, cite all of them.\n"
+                "End with page number only when page data is available. Example: 'Page X.' If multiple pages are referenced, cite all of them.\n"
                 f"ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
             )
 
@@ -576,13 +738,19 @@ def _prepare_rag_context(
             "category": category,
         }
 
-    ticket_chunks = semantic_search(question, limit=max_chunks, source="tickets")
-    ticket_chunks = _filter_chunks(ticket_chunks)
+    specific_pledge_status_question = (
+        category in LOGISTICS_CONTEXT_CATEGORIES
+        and _is_specific_pledge_status_question(question)
+    )
+    if specific_pledge_status_question:
+        ticket_chunks = []
+    else:
+        ticket_chunks = semantic_search(question, limit=max_chunks, source="tickets")
+        ticket_chunks = _filter_chunks(ticket_chunks)
 
     has_context = bool(project or region)
-    LOGISTICS_CATEGORIES = {"atraso_entrega", "rastreamento", "status_pedido"}
     include_logistics = has_context or (
-        category in LOGISTICS_CATEGORIES if category else False
+        category in LOGISTICS_CONTEXT_CATEGORIES if category else False
     )
 
     logistics_chunks = []
@@ -631,6 +799,37 @@ def _prepare_rag_context(
             if len(logistics_chunks) > 1:
                 logistics_chunks = logistics_chunks[:1]
 
+    if specific_pledge_status_question and product_language and logistics_chunks:
+        language_matched = [
+            chunk
+            for chunk in logistics_chunks
+            if _logistics_mentions_product_language(chunk, product_language)
+        ]
+        if language_matched:
+            logistics_chunks = language_matched
+        else:
+            messages = {
+                "pt": (
+                    f"Encontrei dados de logística para {project or 'este projeto'}"
+                    f" em {region or 'esta região'}, mas eles não especificam o idioma"
+                    f" do produto ({product_language}). Não vou confirmar status sem"
+                    " esse dado na base."
+                ),
+                "en": (
+                    f"I found logistics data for {project or 'this project'}"
+                    f" in {region or 'this region'}, but it does not specify the"
+                    f" product language ({product_language}). I cannot confirm"
+                    " that package status without language-specific logistics data."
+                ),
+            }
+            return {
+                "empty": True,
+                "model": model,
+                "not_found_msg": _with_support_fallback(
+                    messages.get(language or "en", messages["en"]), language
+                ),
+            }
+
     voice_tone_docs = get_all_by_source("voice_tone")
 
     if not ticket_chunks and not logistics_chunks:
@@ -651,6 +850,7 @@ def _prepare_rag_context(
         not_found_msg = NOT_FOUND_MESSAGES.get(
             language or "en", NOT_FOUND_MESSAGES["en"]
         )
+        not_found_msg = _with_support_fallback(not_found_msg, language)
         return {"empty": True, "model": model, "not_found_msg": not_found_msg}
 
     voice_tone_text = "\n".join(
@@ -702,12 +902,15 @@ def _prepare_rag_context(
         "pl": "Nie znaleziono odpowiednich informacji w bazie wiedzy.",
     }
     not_found_msg = NOT_FOUND_MESSAGES.get(language or "en", NOT_FOUND_MESSAGES["en"])
+    not_found_msg = _with_support_fallback(not_found_msg, language)
 
     context_hint = ""
     if project:
         context_hint += f"\nThe user is asking about project: {project}."
     if region:
         context_hint += f"\nThe user is in region: {region}."
+    if product_language:
+        context_hint += f"\nThe product/package language is: {product_language}."
     if language:
         lang_name = LANG_NAMES.get(language, language.upper())
         context_hint += f"\nYou MUST respond in {lang_name}. This is mandatory, even if documents are in other languages."
@@ -727,15 +930,21 @@ def _prepare_rag_context(
     if character_prompt:
         system_prompt = (
             f"{character_prompt}\n\n"
+            f"{GLOBAL_RESPONSE_STYLE}\n"
             "SUPPORT KNOWLEDGE:\n"
             "- You have access to past support ticket examples and logistics data. "
             "Use them as reference to answer the user's actual problem — but translate everything "
-            "into your character's language and world.\n"
+            "into your character's language and world with minimal flavor.\n"
             "- Never mention 'tickets', 'documents', 'database' or any technical term.\n\n"
+            "LOGISTICS STATUS RULES:\n"
+            "- For delivery status, tracking, and delays, use ONLY logistics data as factual status.\n"
+            "- Never use past support examples to say a current package was delivered, delayed, refunded, or shipped.\n"
+            "- If product/package language is requested but the logistics data does not explicitly mention that language, say that language-specific logistics are not available yet.\n\n"
             "STRICT RULES:\n"
             "- NEVER include personal data: no names, emails, addresses, order IDs, phone numbers.\n"
-            "- NEVER break character under any circumstance.\n"
+            "- Keep character voice subtle. One short character phrase is enough.\n"
             "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message.\n"
+            f"- If no relevant info is found or you cannot answer safely, say so and direct the user to open a support ticket: {SUPPORT_URL}\n"
             "- If no relevant info is found, say so in character and suggest contacting "
             "customerservice@wearecgs.com — but phrase it as your character would.\n"
             "- If the user asks about a topic outside this project's scope, redirect them "
@@ -746,6 +955,7 @@ def _prepare_rag_context(
         system_prompt = (
             "You are a friendly, knowledgeable customer support assistant for Creative Games Studio (CGS), "
             "a board game company. You have a warm, conversational tone — like a helpful colleague, not a robot.\n\n"
+            f"{GLOBAL_RESPONSE_STYLE}\n"
             "VOICE TONE GUIDELINES (always follow this tone):\n"
             f"{voice_tone_text}\n\n"
             "HOW TO BEHAVE:\n"
@@ -758,13 +968,16 @@ def _prepare_rag_context(
             "- The tickets provided are EXAMPLES of past support conversations. "
             "Use them as reference to craft your response, but never mention them.\n"
             "- The logistics data shows current shipping status. Reference it ONLY if it matches "
-            "the user's project and region.\n\n"
+            "the user's project, region, and product/package language. If language-specific data is missing, say that clearly.\n"
+            "- For delivery status, tracking, and delays, use ONLY logistics data as factual status. "
+            "Never use past support examples to say a current package was delivered, delayed, refunded, or shipped.\n\n"
             "STRICT RULES:\n"
             "- NEVER include personal data: no names, emails, addresses, order IDs, phone numbers. "
             "Do NOT sign with any name or title.\n"
             "- NEVER add meta-commentary about tickets, your process, or sections like 'Observação:'.\n"
             "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message in the conversation. "
             "If they started in English, keep English even if later messages are in another language.\n"
+            f"- If no relevant info is found or you cannot answer safely, say so naturally and direct the user to open a support ticket: {SUPPORT_URL}\n"
             "- If no relevant info is found, say so naturally and suggest contacting "
             "customerservice@wearecgs.com."
             f"{context_hint}"
@@ -856,6 +1069,7 @@ def generate_rag_stream(
     language: str | None = None,
     project: str | None = None,
     region: str | None = None,
+    product_language: str | None = None,
     refinement_round: int = 0,
     parent_message_id: str | None = None,
     original_question: str | None = None,
@@ -874,12 +1088,7 @@ def generate_rag_stream(
         )
 
         llm_messages = [{"role": "system", "content": system_prompt}]
-        if chat_history:
-            for msg in chat_history[-6:]:
-                role = msg.get("role", "user")
-                content = msg.get("content", "")
-                if content and role in ("user", "assistant"):
-                    llm_messages.append({"role": role, "content": content})
+        llm_messages.extend(_build_history_messages(chat_history, question))
         llm_messages.append({"role": "user", "content": question})
 
         yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'language': detected_language, 'refinement_round': refinement_round})}\n\n"
@@ -962,10 +1171,12 @@ def generate_rag_stream(
         yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
         return
 
-    # If project and region are already provided, skip context analysis entirely
+    # If enough context is already provided, skip context analysis entirely.
+    # Game rules only need a project; support/order questions still need region.
     _project = project
     _region = region
-    if _project and _region:
+    _product_language = product_language
+    if _project:
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_category = executor.submit(classify_question, question)
             future_lang = (
@@ -973,19 +1184,33 @@ def generate_rag_stream(
             )
             category = future_category.result()
             detected_language = language if language else future_lang.result()
-        enhanced_query = question
-        logger.info(
-            "Fast path: category=%s, project=%s, question=%s",
-            category,
-            _project,
-            question[:50],
+        missing_logistics = _missing_logistics_context(
+            _project, _region, _product_language
         )
+        if category == "game_rules" or category in LOGISTICS_CONTEXT_CATEGORIES or (
+            category not in LOGISTICS_CONTEXT_CATEGORIES and _region
+        ):
+            enhanced_query = question
+            logger.info(
+                "Fast path: category=%s, project=%s, region=%s, question=%s",
+                category,
+                _project,
+                _region,
+                question[:50],
+            )
+        else:
+            _project = None
     else:
+        category = None
+
+    if not _project:
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_analysis = executor.submit(analyze_context, question, chat_history)
-            future_category = executor.submit(classify_question, question)
+            future_category = (
+                executor.submit(classify_question, question) if category is None else None
+            )
             analysis = future_analysis.result()
-            category = future_category.result()
+            category = category or future_category.result()
 
         detected_language = language or analysis.get("language")
 
@@ -1019,17 +1244,33 @@ def generate_rag_stream(
 
         _project = analysis.get("project")
         _region = analysis.get("region")
+        _product_language = product_language or analysis.get("product_language")
         enhanced_query = analysis.get("enhanced_query", question)
+
+    if category in LOGISTICS_CONTEXT_CATEGORIES:
+        missing_logistics = _missing_logistics_context(
+            _project, _region, _product_language
+        )
+        if missing_logistics:
+            follow_up = _build_logistics_follow_up(
+                detected_language, missing_logistics
+            )
+            yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': {'tickets': [], 'logistics': []}, 'model': model, 'need_info': True, 'language': detected_language})}\n\n"
+            for word in follow_up.split(" "):
+                yield f"data: {json.dumps({'type': 'token', 'content': word + ' '})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'chat_id': ''})}\n\n"
+            return
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_ctx = executor.submit(
             _prepare_rag_context,
-            enhanced_query,
-            max_chunks,
-            _project,
-            _region,
-            category,
-            detected_language,
+            question=enhanced_query,
+            max_chunks=max_chunks,
+            project=_project,
+            region=_region,
+            product_language=_product_language,
+            category=category,
+            language=detected_language,
         )
         ctx = future_ctx.result()
 
@@ -1042,18 +1283,14 @@ def generate_rag_stream(
         yield f"data: {json.dumps({'type': 'done', 'chat_id': ''})}\n\n"
         return
 
-    yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': ctx['sources'], 'model': model, 'language': detected_language, 'project': _project, 'region': _region})}\n\n"
+    yield f"data: {json.dumps({'type': 'meta', 'category': category, 'sources': ctx['sources'], 'model': model, 'language': detected_language, 'project': _project, 'region': _region, 'product_language': _product_language})}\n\n"
 
     llm_messages = [{"role": "system", "content": ctx["system_prompt"]}]
-    if chat_history:
-        for msg in chat_history[:-1]:
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
-            if content and role in ("user", "assistant"):
-                llm_messages.append({"role": role, "content": content})
+    llm_messages.extend(_build_history_messages(chat_history, question))
     llm_messages.append({"role": "user", "content": ctx["user_prompt"]})
 
     temperature = 0.3 if ctx.get("category") == "game_rules" else 0.7
+    max_tokens = 800 if ctx.get("category") == "game_rules" else 520
 
     full_answer = []
     tokens_in = 0
@@ -1067,7 +1304,7 @@ def generate_rag_stream(
                 messages=llm_messages,
                 temperature=temperature,
                 top_p=0.9,
-                max_tokens=1024,
+                max_tokens=max_tokens,
                 stream=True,
                 stream_options={"include_usage": True},
             )
@@ -1087,10 +1324,10 @@ def generate_rag_stream(
                     "messages": llm_messages,
                     "stream": True,
                     "options": {
-                        "temperature": temperature,
-                        "top_p": 0.9,
-                        "num_predict": 1024,
-                        "num_ctx": 4096,
+                            "temperature": temperature,
+                            "top_p": 0.9,
+                            "num_predict": max_tokens,
+                            "num_ctx": 4096,
                     },
                 },
                 timeout=300,
@@ -1154,6 +1391,7 @@ def generate_rag_response(
     language: str | None = None,
     project: str | None = None,
     region: str | None = None,
+    product_language: str | None = None,
     refinement_round: int = 0,
     parent_message_id: str | None = None,
     original_question: str | None = None,
@@ -1171,12 +1409,7 @@ def generate_rag_response(
         )
 
         llm_messages = [{"role": "system", "content": system_prompt}]
-        if chat_history:
-            for msg in chat_history[-6:]:
-                role = msg.get("role", "user")
-                content = msg.get("content", "")
-                if content and role in ("user", "assistant"):
-                    llm_messages.append({"role": role, "content": content})
+        llm_messages.extend(_build_history_messages(chat_history, question))
         llm_messages.append({"role": "user", "content": question})
 
         try:
@@ -1247,7 +1480,8 @@ def generate_rag_response(
 
     _project = project
     _region = region
-    if _project and _region:
+    _product_language = product_language
+    if _project:
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_category = executor.submit(classify_question, question)
             future_lang = (
@@ -1255,13 +1489,26 @@ def generate_rag_response(
             )
             category = future_category.result()
             detected_language = language if language else future_lang.result()
-        enhanced_query = question
+        missing_logistics = _missing_logistics_context(
+            _project, _region, _product_language
+        )
+        if category == "game_rules" or category in LOGISTICS_CONTEXT_CATEGORIES or (
+            category not in LOGISTICS_CONTEXT_CATEGORIES and _region
+        ):
+            enhanced_query = question
+        else:
+            _project = None
     else:
+        category = None
+
+    if not _project:
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_analysis = executor.submit(analyze_context, question, chat_history)
-            future_category = executor.submit(classify_question, question)
+            future_category = (
+                executor.submit(classify_question, question) if category is None else None
+            )
             analysis = future_analysis.result()
-            category = future_category.result()
+            category = category or future_category.result()
 
         detected_language = language or analysis.get("language")
 
@@ -1280,13 +1527,34 @@ def generate_rag_response(
 
         _project = analysis.get("project")
         _region = analysis.get("region")
+        _product_language = product_language or analysis.get("product_language")
         enhanced_query = analysis.get("enhanced_query", question)
+
+    if category in LOGISTICS_CONTEXT_CATEGORIES:
+        missing_logistics = _missing_logistics_context(
+            _project, _region, _product_language
+        )
+        if missing_logistics:
+            follow_up = _build_logistics_follow_up(
+                detected_language, missing_logistics
+            )
+            return {
+                "question": question,
+                "answer": follow_up,
+                "sources": {"tickets": [], "logistics": []},
+                "model": Config.get_llm_model(),
+                "category": category,
+                "chat_id": "",
+                "need_info": True,
+                "language": detected_language,
+            }
 
     ctx = _prepare_rag_context(
         enhanced_query,
         max_chunks,
         project=_project,
         region=_region,
+        product_language=_product_language,
         category=category,
         language=detected_language,
     )
@@ -1299,7 +1567,7 @@ def generate_rag_response(
             ),
             "sources": {"tickets": [], "logistics": []},
             "model": ctx["model"],
-            "category": "outro",
+            "category": category,
             "chat_id": "",
             "language": detected_language,
         }
@@ -1307,15 +1575,11 @@ def generate_rag_response(
     model = ctx["model"]
 
     llm_messages = [{"role": "system", "content": ctx["system_prompt"]}]
-    if chat_history:
-        for msg in chat_history[:-1]:
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
-            if content and role in ("user", "assistant"):
-                llm_messages.append({"role": role, "content": content})
+    llm_messages.extend(_build_history_messages(chat_history, question))
     llm_messages.append({"role": "user", "content": ctx["user_prompt"]})
 
     temperature = 0.3 if ctx.get("category") == "game_rules" else 0.7
+    max_tokens = 800 if ctx.get("category") == "game_rules" else 520
 
     try:
         if Config.is_openai_llm():
@@ -1325,7 +1589,7 @@ def generate_rag_response(
                 messages=llm_messages,
                 temperature=temperature,
                 top_p=0.9,
-                max_tokens=1024,
+                max_tokens=max_tokens,
             )
             answer = response.choices[0].message.content.strip()
             tokens_in = response.usage.prompt_tokens
@@ -1337,12 +1601,12 @@ def generate_rag_response(
                     "model": model,
                     "messages": llm_messages,
                     "stream": False,
-                    "options": {
-                        "temperature": temperature,
-                        "top_p": 0.9,
-                        "num_predict": 1024,
-                        "num_ctx": 4096,
-                    },
+                        "options": {
+                            "temperature": temperature,
+                            "top_p": 0.9,
+                            "num_predict": max_tokens,
+                            "num_ctx": 4096,
+                        },
                 },
                 timeout=300,
             )
@@ -1353,8 +1617,6 @@ def generate_rag_response(
             tokens_out = data.get("eval_count", 0)
     except Exception as e:
         raise RuntimeError(f"Error generating response via {Config.LLM_PROVIDER}: {e}")
-
-    category = classify_question(question)
 
     chat_id = ""
     if session_id:

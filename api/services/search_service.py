@@ -155,28 +155,6 @@ def get_logistics_by_project_region(project: str, region: str) -> list[dict]:
             }
         ]
 
-    # Fallback: search only by project
-    sql_fallback = """
-        SELECT id, title, content AS chunk
-        FROM public.documents
-        WHERE metadata->>'source' = 'logistics'
-          AND title ILIKE %s
-        LIMIT 1
-    """
-    with get_cursor() as cur:
-        cur.execute(sql_fallback, (f"%{project}%",))
-        row = cur.fetchone()
-
-    if row:
-        return [
-            {
-                "id": row["id"],
-                "title": row["title"],
-                "chunk": row["chunk"],
-                "distance": 0.0,
-            }
-        ]
-
     return []
 
 
