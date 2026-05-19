@@ -1,6 +1,7 @@
 import logging
 from functools import lru_cache
 from typing import Any
+import re
 from openai import OpenAI
 from api.config import Config
 from api.database import get_cursor
@@ -189,7 +190,62 @@ def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dic
     """
     with get_cursor() as cur:
         cur.execute(sql, (vec_literal, project, limit))
-        rows = cur.fetchall()
+        rows = list(cur.fetchall())
+
+        if len(rows) < limit:
+            terms = [
+                term
+                for term in re.findall(r"[A-Za-zÀ-ÿ0-9-]{4,}", query.lower())
+                if term not in {"como", "faco", "faço", "para", "sobre", "qual", "quais", "what", "which", "with", "that", "this", "does"}
+            ]
+            if terms:
+                expansions = {
+                    "ataque": ["attack"],
+                    "atacar": ["attack"],
+                    "corpo": ["melee"],
+                    "dano": ["damage"],
+                    "defesa": ["defense"],
+                    "dado": ["dice", "die"],
+                    "dados": ["dice"],
+                    "cubo": ["cube"],
+                    "cubos": ["cube"],
+                    "amarelo": ["yellow"],
+                    "vermelho": ["red"],
+                    "azul": ["blue"],
+                    "verde": ["green"],
+                    "contra-ataque": ["counterattack", "counter", "fumble"],
+                    "contra": ["counterattack", "counter", "fumble"],
+                }
+                expanded_terms = []
+                for term in terms:
+                    expanded_terms.append(term)
+                    expanded_terms.extend(expansions.get(term, []))
+                terms = list(dict.fromkeys(expanded_terms))
+                clauses = " OR ".join(["LOWER(content) LIKE %s"] * len(terms))
+                text_sql = f"""
+                    SELECT
+                        id,
+                        project,
+                        page_number,
+                        section_title,
+                        image_path,
+                        content AS chunk,
+                        0.0 AS distance
+                    FROM public.manual_segments
+                    WHERE project = %s
+                      AND ({clauses})
+                    ORDER BY page_number NULLS LAST, id
+                    LIMIT %s
+                """
+                seen_ids = {row["id"] for row in rows}
+                params = [project, *[f"%{term}%" for term in terms], limit]
+                cur.execute(text_sql, params)
+                for row in cur.fetchall():
+                    if row["id"] not in seen_ids:
+                        rows.append(row)
+                        seen_ids.add(row["id"])
+                    if len(rows) >= limit:
+                        break
 
     return [
         {

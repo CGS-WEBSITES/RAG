@@ -68,6 +68,63 @@ CATEGORIES = [
 
 _openai_client = None
 
+PROJECT_ALIASES = {
+    "Drunagor": ("drunagor", "chronicles of drunagor", "cod", "aod"),
+    "Dante": ("dante", "inferno"),
+    "Battleforge": ("battleforge",),
+    "Forfun": ("forfun", "for fun"),
+}
+
+GAME_RULE_TERMS = (
+    "attack",
+    "attacks",
+    "attacking",
+    "melee",
+    "counter attack",
+    "counterattack",
+    "fumble",
+    "damage",
+    "defense",
+    "defence",
+    "dice",
+    "die",
+    "cube",
+    "d20",
+    "rule",
+    "rules",
+    "setup",
+    "skill",
+    "ability",
+    "monster",
+    "turn",
+    "round",
+    "combat",
+    "how do i",
+    "how to",
+    "ataque",
+    "atacar",
+    "corpo a corpo",
+    "contra ataque",
+    "contra-ataque",
+    "dano",
+    "defesa",
+    "dado",
+    "dados",
+    "cubo",
+    "cubos",
+    "regra",
+    "regras",
+    "preparacao",
+    "preparação",
+    "habilidade",
+    "monstro",
+    "turno",
+    "rodada",
+    "combate",
+    "como faco",
+    "como faço",
+)
+
 
 def _detect_language(text: str) -> str:
     client = _get_openai_client()
@@ -224,6 +281,23 @@ def _with_support_fallback(message: str, language: str | None) -> str:
     return f"{message}\n\n{suffix}"
 
 
+def _detect_project_from_text(text: str) -> str | None:
+    normalized = (text or "").lower()
+    for project, aliases in PROJECT_ALIASES.items():
+        if any(alias in normalized for alias in aliases):
+            return project
+    return None
+
+
+def _looks_like_game_rules_question(question: str) -> bool:
+    text = (question or "").lower()
+    if not text:
+        return False
+    if any(term in text for term in GAME_RULE_TERMS):
+        return True
+    return bool(re.search(r"\b(d|dado|dice)\s*20\b", text))
+
+
 def _filter_chunks(chunks: list[dict]) -> list[dict]:
     return [c for c in chunks if c["distance"] < RELEVANCE_THRESHOLD]
 
@@ -241,6 +315,9 @@ def _build_sources(chunks: list[dict]) -> list[dict]:
 
 
 def classify_question(question: str) -> str:
+    if _looks_like_game_rules_question(question):
+        return "game_rules"
+
     categories_str = ", ".join(CATEGORIES)
     prompt = (
         f"Classify this customer support question into exactly ONE category.\n"
@@ -681,6 +758,8 @@ def _prepare_rag_context(
                 f"{GAME_RULES_RESPONSE_STYLE}\n"
                 "GAME RULES KNOWLEDGE:\n"
                 "- You have access to the official game rulebook. Use it to answer the user's question accurately.\n"
+                "- Use ONLY the provided rulebook excerpts as factual source. Do not invent rules from general board game knowledge.\n"
+                f"- If the excerpts do not answer the question, say you could not find it and direct the user to support: {SUPPORT_URL}\n"
                 "- Stay lightly in character while explaining the rules, but do not sacrifice clarity.\n"
                 "\n"
                 "ANSWER LENGTH (STRICTLY ENFORCED — overrides any tendency to elaborate from your persona):\n"
@@ -708,6 +787,8 @@ def _prepare_rag_context(
                 "You are a helpful game rules assistant for Creative Games Studio (CGS).\n"
                 f"{GAME_RULES_RESPONSE_STYLE}\n"
                 "Use the provided rulebook excerpts to answer the player's question accurately and clearly.\n"
+                "Use ONLY the provided excerpts as factual source. Do not invent rules from general board game knowledge.\n"
+                f"If the excerpts do not answer the question, say you could not find it and direct the user to support: {SUPPORT_URL}\n"
                 "\n"
                 "ANSWER LENGTH (STRICTLY ENFORCED):\n"
                 "- Simple questions: 2-5 direct lines.\n"
@@ -1173,7 +1254,8 @@ def generate_rag_stream(
 
     # If enough context is already provided, skip context analysis entirely.
     # Game rules only need a project; support/order questions still need region.
-    _project = project
+    explicit_project = _detect_project_from_text(question)
+    _project = explicit_project or project
     _region = region
     _product_language = product_language
     if _project:
@@ -1242,7 +1324,7 @@ def generate_rag_stream(
             yield f"data: {json.dumps({'type': 'done', 'chat_id': chat_id})}\n\n"
             return
 
-        _project = analysis.get("project")
+        _project = explicit_project or analysis.get("project")
         _region = analysis.get("region")
         _product_language = product_language or analysis.get("product_language")
         enhanced_query = analysis.get("enhanced_query", question)
@@ -1478,7 +1560,8 @@ def generate_rag_response(
             "refinement_round": refinement_round,
         }
 
-    _project = project
+    explicit_project = _detect_project_from_text(question)
+    _project = explicit_project or project
     _region = region
     _product_language = product_language
     if _project:
@@ -1525,7 +1608,7 @@ def generate_rag_response(
                 "language": detected_language,
             }
 
-        _project = analysis.get("project")
+        _project = explicit_project or analysis.get("project")
         _region = analysis.get("region")
         _product_language = product_language or analysis.get("product_language")
         enhanced_query = analysis.get("enhanced_query", question)
