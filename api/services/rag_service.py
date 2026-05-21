@@ -857,22 +857,32 @@ def _prepare_rag_context(
 
             if region and logistics_chunks:
                 region_aliases = {
-                    "brazil": "brasil",
-                    "brasilien": "brasil",
-                    "eua": "eua",
-                    "usa": "eua",
-                    "us": "eua",
-                    "europe": "europa",
-                    "europa": "europa",
-                    "asia": "ásia",
-                    "oceania": "oceania",
+                    "brazil": ["brasil", "brazil"],
+                    "brasil": ["brasil", "brazil"],
+                    "brasilien": ["brasil", "brazil"],
+                    "canada": ["canada"],
+                    "eua": ["eua", "usa", "united states"],
+                    "usa": ["eua", "usa", "united states"],
+                    "us": ["eua", "usa", "united states"],
+                    "europe": ["europa", "europe"],
+                    "europa": ["europa", "europe"],
+                    "asia": ["asia"],
+                    "australia": ["australia", "oceania"],
+                    "uk": ["uk", "united kingdom"],
+                    "united kingdom": ["uk", "united kingdom"],
+                    "oceania": ["oceania", "australia"],
+                    "rest of world": ["resto do mundo", "rest of world", "rest of the world"],
+                    "rest of the world": ["resto do mundo", "rest of world", "rest of the world"],
                 }
-                region_normalized = region_aliases.get(region.lower(), region.lower())
+                region_terms = region_aliases.get(region.lower(), [region.lower()])
                 filtered = [
                     c
                     for c in logistics_chunks
-                    if region_normalized in c.get("title", "").lower()
-                    or region_normalized in c.get("chunk", "").lower()
+                    if any(
+                        term in c.get("title", "").lower()
+                        or term in c.get("chunk", "").lower()
+                        for term in region_terms
+                    )
                 ]
                 if filtered:
                     logistics_chunks = filtered

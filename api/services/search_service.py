@@ -121,29 +121,36 @@ def semantic_search(
 
 def get_logistics_by_project_region(project: str, region: str) -> list[dict]:
     region_aliases = {
-        "brazil": "brasil",
-        "brasilien": "brasil",
-        "eua": "eua",
-        "usa": "eua",
-        "us": "eua",
-        "europe": "europa",
-        "europa": "europa",
-        "asia": "ásia",
-        "oceania": "oceania",
-        "rest of world": "resto do mundo",
+        "brazil": ["brasil", "brazil"],
+        "brasil": ["brasil", "brazil"],
+        "brasilien": ["brasil", "brazil"],
+        "canada": ["canada"],
+        "eua": ["eua", "usa", "united states"],
+        "usa": ["eua", "usa", "united states"],
+        "us": ["eua", "usa", "united states"],
+        "europe": ["europa", "europe"],
+        "europa": ["europa", "europe"],
+        "asia": ["asia"],
+        "australia": ["australia", "oceania"],
+        "uk": ["uk", "united kingdom"],
+        "united kingdom": ["uk", "united kingdom"],
+        "oceania": ["oceania", "australia"],
+        "rest of world": ["resto do mundo", "rest of world", "rest of the world"],
+        "rest of the world": ["resto do mundo", "rest of world", "rest of the world"],
     }
-    region_normalized = region_aliases.get(region.lower(), region.lower())
+    region_terms = region_aliases.get(region.lower(), [region.lower()])
+    region_filter = " OR ".join(["title ILIKE %s"] * len(region_terms))
 
-    sql = """
+    sql = f"""
         SELECT id, title, content AS chunk
         FROM public.documents
         WHERE metadata->>'source' = 'logistics'
           AND title ILIKE %s
-          AND title ILIKE %s
+          AND ({region_filter})
         LIMIT 1
     """
     with get_cursor() as cur:
-        cur.execute(sql, (f"%{project}%", f"%{region_normalized}%"))
+        cur.execute(sql, [f"%{project}%", *[f"%{term}%" for term in region_terms]])
         row = cur.fetchone()
 
     if row:
