@@ -746,10 +746,10 @@ def _prepare_rag_context(
             "nl": "Dutch",
             "pl": "Polish",
         }
-        lang_instruction = ""
+        response_language_rule = "- ALWAYS respond in the SAME LANGUAGE as the user's question."
         if language:
             lang_name = LANG_NAMES_MANUAL.get(language, language.upper())
-            lang_instruction = f"\nALWAYS respond in {lang_name}. This is mandatory."
+            response_language_rule = f"- ALWAYS respond in {lang_name}. This is mandatory, even if the user writes in another language."
 
         if character_prompt:
             system_prompt = (
@@ -780,7 +780,7 @@ def _prepare_rag_context(
                 "- End with page number only when page data is available. Example: 'Page 10.' If multiple pages are referenced, cite all of them.\n\n"
                 "STRICT RULES:\n"
                 "- NEVER break character — but brevity beats flavor.\n"
-                f"- ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
+                f"{response_language_rule}"
             )
         else:
             system_prompt = (
@@ -802,7 +802,7 @@ def _prepare_rag_context(
                 "- Q: 'How long does a game last?' → A: 'A session takes about 60 to 90 minutes. See page 4 of the manual.'\n"
                 "\n"
                 "End with page number only when page data is available. Example: 'Page X.' If multiple pages are referenced, cite all of them.\n"
-                f"ALWAYS respond in the SAME LANGUAGE as the user's question.{lang_instruction}"
+                f"{response_language_rule}"
             )
 
         user_prompt = f"RULEBOOK EXCERPTS:\n{context}\n\nQUESTION: {question}"
@@ -857,22 +857,32 @@ def _prepare_rag_context(
 
             if region and logistics_chunks:
                 region_aliases = {
-                    "brazil": "brasil",
-                    "brasilien": "brasil",
-                    "eua": "eua",
-                    "usa": "eua",
-                    "us": "eua",
-                    "europe": "europa",
-                    "europa": "europa",
-                    "asia": "ásia",
-                    "oceania": "oceania",
+                    "brazil": ["brasil", "brazil"],
+                    "brasil": ["brasil", "brazil"],
+                    "brasilien": ["brasil", "brazil"],
+                    "canada": ["canada"],
+                    "eua": ["eua", "usa", "united states"],
+                    "usa": ["eua", "usa", "united states"],
+                    "us": ["eua", "usa", "united states"],
+                    "europe": ["europa", "europe"],
+                    "europa": ["europa", "europe"],
+                    "asia": ["asia"],
+                    "australia": ["australia", "oceania"],
+                    "uk": ["uk", "united kingdom"],
+                    "united kingdom": ["uk", "united kingdom"],
+                    "oceania": ["oceania", "australia"],
+                    "rest of world": ["resto do mundo", "rest of world", "rest of the world"],
+                    "rest of the world": ["resto do mundo", "rest of world", "rest of the world"],
                 }
-                region_normalized = region_aliases.get(region.lower(), region.lower())
+                region_terms = region_aliases.get(region.lower(), [region.lower()])
                 filtered = [
                     c
                     for c in logistics_chunks
-                    if region_normalized in c.get("title", "").lower()
-                    or region_normalized in c.get("chunk", "").lower()
+                    if any(
+                        term in c.get("title", "").lower()
+                        or term in c.get("chunk", "").lower()
+                        for term in region_terms
+                    )
                 ]
                 if filtered:
                     logistics_chunks = filtered
@@ -992,9 +1002,11 @@ def _prepare_rag_context(
         context_hint += f"\nThe user is in region: {region}."
     if product_language:
         context_hint += f"\nThe product/package language is: {product_language}."
+    response_language_rule = "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message."
     if language:
         lang_name = LANG_NAMES.get(language, language.upper())
         context_hint += f"\nYou MUST respond in {lang_name}. This is mandatory, even if documents are in other languages."
+        response_language_rule = f"- ALWAYS respond in {lang_name}. This is mandatory, even if the user writes in another language."
 
     scope_rule = ""
     if project and region:
@@ -1024,7 +1036,7 @@ def _prepare_rag_context(
             "STRICT RULES:\n"
             "- NEVER include personal data: no names, emails, addresses, order IDs, phone numbers.\n"
             "- Keep character voice subtle. One short character phrase is enough.\n"
-            "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message.\n"
+            f"{response_language_rule}\n"
             f"- If no relevant info is found or you cannot answer safely, say so and direct the user to open a support ticket: {SUPPORT_URL}\n"
             "- If no relevant info is found, say so in character and suggest contacting "
             "customerservice@wearecgs.com — but phrase it as your character would.\n"
@@ -1056,8 +1068,7 @@ def _prepare_rag_context(
             "- NEVER include personal data: no names, emails, addresses, order IDs, phone numbers. "
             "Do NOT sign with any name or title.\n"
             "- NEVER add meta-commentary about tickets, your process, or sections like 'Observação:'.\n"
-            "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message in the conversation. "
-            "If they started in English, keep English even if later messages are in another language.\n"
+            f"{response_language_rule}\n"
             f"- If no relevant info is found or you cannot answer safely, say so naturally and direct the user to open a support ticket: {SUPPORT_URL}\n"
             "- If no relevant info is found, say so naturally and suggest contacting "
             "customerservice@wearecgs.com."

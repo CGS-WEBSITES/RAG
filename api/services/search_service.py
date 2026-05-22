@@ -121,29 +121,36 @@ def semantic_search(
 
 def get_logistics_by_project_region(project: str, region: str) -> list[dict]:
     region_aliases = {
-        "brazil": "brasil",
-        "brasilien": "brasil",
-        "eua": "eua",
-        "usa": "eua",
-        "us": "eua",
-        "europe": "europa",
-        "europa": "europa",
-        "asia": "ásia",
-        "oceania": "oceania",
-        "rest of world": "resto do mundo",
+        "brazil": ["brasil", "brazil"],
+        "brasil": ["brasil", "brazil"],
+        "brasilien": ["brasil", "brazil"],
+        "canada": ["canada"],
+        "eua": ["eua", "usa", "united states"],
+        "usa": ["eua", "usa", "united states"],
+        "us": ["eua", "usa", "united states"],
+        "europe": ["europa", "europe"],
+        "europa": ["europa", "europe"],
+        "asia": ["asia"],
+        "australia": ["australia", "oceania"],
+        "uk": ["uk", "united kingdom"],
+        "united kingdom": ["uk", "united kingdom"],
+        "oceania": ["oceania", "australia"],
+        "rest of world": ["resto do mundo", "rest of world", "rest of the world"],
+        "rest of the world": ["resto do mundo", "rest of world", "rest of the world"],
     }
-    region_normalized = region_aliases.get(region.lower(), region.lower())
+    region_terms = region_aliases.get(region.lower(), [region.lower()])
+    region_filter = " OR ".join(["title ILIKE %s"] * len(region_terms))
 
-    sql = """
+    sql = f"""
         SELECT id, title, content AS chunk
         FROM public.documents
         WHERE metadata->>'source' = 'logistics'
           AND title ILIKE %s
-          AND title ILIKE %s
+          AND ({region_filter})
         LIMIT 1
     """
     with get_cursor() as cur:
-        cur.execute(sql, (f"%{project}%", f"%{region_normalized}%"))
+        cur.execute(sql, [f"%{project}%", *[f"%{term}%" for term in region_terms]])
         row = cur.fetchone()
 
     if row:
@@ -246,6 +253,46 @@ def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dic
                         seen_ids.add(row["id"])
                     if len(rows) >= limit:
                         break
+
+    if rows:
+        missing_image_pages = {
+            (row["project"], row["page_number"])
+            for row in rows
+            if not row["image_path"] and row["page_number"] is not None
+        }
+        if missing_image_pages:
+            page_filters = " OR ".join(["(project = %s AND page_number = %s)"] * len(missing_image_pages))
+            params = []
+            for page_project, page_number in missing_image_pages:
+                params.extend([page_project, page_number])
+            with get_cursor() as cur:
+                cur.execute(
+                    f"""
+                        SELECT project, page_number, image_path
+                        FROM public.manual_segments
+                        WHERE image_path IS NOT NULL
+                          AND image_path <> ''
+                          AND ({page_filters})
+                        ORDER BY project, page_number, id
+                    """,
+                    params,
+                )
+                images_by_page = {}
+                for image_row in cur.fetchall():
+                    key = (image_row["project"], image_row["page_number"])
+                    current = images_by_page.setdefault(key, [])
+                    current.extend(
+                        img.strip()
+                        for img in str(image_row["image_path"]).split(",")
+                        if img.strip()
+                    )
+
+            for row in rows:
+                if row["image_path"] or row["page_number"] is None:
+                    continue
+                images = images_by_page.get((row["project"], row["page_number"]))
+                if images:
+                    row["image_path"] = ",".join(dict.fromkeys(images))
 
     return [
         {
