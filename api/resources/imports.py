@@ -276,31 +276,64 @@ class ImportLogistics(Resource):
         erros = 0
         for row in dados:
             try:
-                projeto = str(row.get("PROJETO", ""))
-                regiao = str(row.get("REGIAO", ""))
-                id_update = str(row.get("ID_UPDATE", ""))
+                projeto = str(row.get("PROJETO", row.get("PROJECT", ""))).strip()
+                regiao = str(row.get("REGIAO", row.get("REGION", ""))).strip()
+                id_update = str(row.get("ID_UPDATE", row.get("UPDATE_ID", ""))).strip()
+                lingua = str(row.get("LINGUA", row.get("LANGUAGE", ""))).strip()
 
                 if not projeto or not regiao or not id_update:
                     erros += 1
                     continue
 
-                title = f"{projeto} | {regiao} | {id_update}"
-                content = (
-                    f"Projeto: {projeto}\n"
-                    f"Região: {regiao}\n"
-                    f"Parceiro Logístico: {row.get('PARCEIRO_LOGISTICO', '')}\n"
-                    f"Status Atual: {row.get('STATUS_ATUAL', '')}\n"
-                    f"ETA Warehouse: {row.get('ETA_WAREHOUSE', '')}\n"
-                    f"Início dos Envios: {row.get('INICIO_ENVIOS', '')}\n"
-                    f"Conclusão Estimada: {row.get('CONCLUSAO_ESTIMADA', '')}\n"
-                    f"Ocorrências: {row.get('OCORRENCIAS', '')}\n"
-                    f"Observações: {row.get('OBSERVACOES_BACKER', '')}\n"
-                    f"Descrição: {row.get('DESCRICAO', '')}"
-                )
+                title = f"{projeto} | {regiao} | {lingua} | {id_update}" if lingua else f"{projeto} | {regiao} | {id_update}"
+                
+                content_parts = [
+                    f"Projeto: {projeto}",
+                    f"Região: {regiao}",
+                ]
+                if lingua:
+                    content_parts.append(f"Idioma: {lingua}")
+                
+                content_parts.extend([
+                    f"Parceiro Logístico: {row.get('PARCEIRO_LOGISTICO', row.get('LOGISTICS_PARTNER', ''))}",
+                    f"Status Atual: {row.get('STATUS_ATUAL', row.get('CURRENT_STATUS', ''))}",
+                    f"ETA Warehouse: {row.get('ETA_WAREHOUSE', '')}",
+                    f"Início dos Envios: {row.get('INICIO_ENVIOS', row.get('SHIPMENTS_STARTED', ''))}",
+                    f"Conclusão Estimada: {row.get('CONCLUSAO_ESTIMADA', row.get('ESTIMATED_COMPLETION', ''))}",
+                    f"Ocorrências: {row.get('OCORRENCIAS', row.get('ISSUES', ''))}",
+                    f"Observações: {row.get('OBSERVACOES_BACKER', row.get('BACKER_NOTES', ''))}",
+                    f"Descrição: {row.get('DESCRICAO', row.get('DESCRIPTION', ''))}"
+                ])
+                content = "\n".join(content_parts)
+
+                metadata = {
+                    "source": "logistics",
+                    "id_update": id_update,
+                }
+                if lingua:
+                    # Normalize language name to ISO 639-1 code
+                    lang_lower = lingua.lower()
+                    lang_code = "en"
+                    if "portug" in lang_lower or lang_lower == "pt":
+                        lang_code = "pt"
+                    elif "german" in lang_lower or "deutsch" in lang_lower or lang_lower == "de":
+                        lang_code = "de"
+                    elif "french" in lang_lower or "franç" in lang_lower or lang_lower == "fr":
+                        lang_code = "fr"
+                    elif "span" in lang_lower or "españ" in lang_lower or lang_lower == "es":
+                        lang_code = "es"
+                    elif "ital" in lang_lower or lang_lower == "it":
+                        lang_code = "it"
+                    elif "polish" in lang_lower or "polsk" in lang_lower or lang_lower == "pl":
+                        lang_code = "pl"
+                    
+                    metadata["language"] = lang_code
+                    metadata["language_name"] = lingua
+
                 _create_document(
                     title=title,
                     content=content,
-                    metadata={"source": "logistics", "id_update": id_update},
+                    metadata=metadata,
                 )
                 processados += 1
             except Exception as e:
