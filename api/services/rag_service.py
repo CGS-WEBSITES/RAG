@@ -13,6 +13,7 @@ from api.services.search_service import (
     get_all_by_source,
     get_logistics_by_project_region,
     search_manual_segments,
+    search_keywords,
 )
 from api.services.history_service import save_chat
 from api.services.character_prompts import get_character_prompt, get_character_name
@@ -20,7 +21,7 @@ from api.services.character_prompts import get_character_prompt, get_character_n
 logger = logging.getLogger(__name__)
 
 MAX_CHUNK_LENGTH = 500
-RELEVANCE_THRESHOLD = 1.5
+RELEVANCE_THRESHOLD = 0.58
 MAX_REFINEMENT_ROUNDS = 2
 SUPPORT_URL = "https://newaccount1620866477944.freshdesk.com/support/tickets/new"
 LOGISTICS_CONTEXT_CATEGORIES = {
@@ -31,25 +32,41 @@ LOGISTICS_CONTEXT_CATEGORIES = {
 
 GLOBAL_RESPONSE_STYLE = """
 RESPONSE STYLE (strict):
-- Be direct first, in character second. The answer must solve the user's request before adding any flavor.
+- DO NOT BE WORDY. If the question is simple, answer it in 1 or 2 sentences max.
+- Be direct first, in character second. The answer must solve the user's request immediately and concisely before adding any flavor.
 - Use only about 10% of the previous character flavor: at most one short in-character phrase per answer.
 - No dramatic preambles, no long metaphors, no ceremonial openings, no restating the question.
 - Do not add a decorative closing line after the practical answer.
 - Do not translate shipping/support facts into fantasy metaphors. Use plain terms like order, package, delivered, customs, tracking.
 - Prefer 1 short paragraph or 2-4 bullets. Use more only when the user explicitly asks for detail.
+- If the user asks a simple question (e.g. yes/no or direct check), answer it immediately without detailed context unless requested.
 - If the user is confused, answer with clear steps.
 - For Discord, keep the answer easy to read on a phone.
 """
 
 GAME_RULES_RESPONSE_STYLE = """
-GAME RULES RESPONSE STYLE (strict about clarity, flexible about length):
-- Give the correct rule answer, even if it needs more text.
-- For simple questions, answer in 2-5 direct lines.
-- For complex rules, use clear steps, conditions, exceptions, and examples as needed.
-- Use almost no character flavor. Clarity and correctness beat persona.
-- Start with the rule/action, not with a greeting or lore.
-- If the user asks "how do I attack?", give the steps directly.
+GAME RULES RESPONSE STYLE (STRICT - ZERO HALLUCINATION, ERRATA PRIORITY & BOOK ATTRIBUTION):
+- Give the correct official rule answer directly using the provided keyword definitions and manual excerpts.
+- If the question is simple (e.g. player count, session duration, direct card check), give a direct, simple response in 1-2 sentences. Avoid long explanations unless necessary.
+- For complex mechanics or questions explaining how things work (e.g. how combat works, how to lose, how corruption works), explain the rules completely using the provided manual excerpts. Use clear steps, conditions, or bullet points.
+- ABSOLUTE ERRATA PRIORITY: If an ERRATA / OFFICIAL CLARIFICATION chunk is present in the provided context, it OVERRIDES and SUPERSEDES any conflicting text from earlier base rulebooks. ALWAYS base your answer on the Errata rule when an Errata is present.
+- BOOK & EXPANSION ATTRIBUTION: Always specify which book or expansion a rule originates from. When a rule differs or is expanded in an expansion (e.g. Corebox vs Apocalypse vs Desert of Hellscar vs Rise of Undead Dragon), explicitly state which rule belongs to which book:
+  - **Corebox (Age of Darkness)**: [rule]
+  - **[Expansion Name] Expansion**: [expansion rule]
+- STRICT ZERO HALLUCINATION: Do NOT invent, speculate, or extrapolate rules or lore. If the provided excerpts do not explicitly contain the rule, say clearly: "I could not find the exact rule for this in the manual."
+- Use minimal character flavor (at most one short phrase). Clarity and rule accuracy beat persona.
+- Start directly with the rule/mechanic, not with greetings or lore preambles.
 - Only add page references when the provided manual excerpt includes a page.
+"""
+
+LOGISTICS_RESPONSE_STYLE = """
+LOGISTICS RESPONSE STYLE (STRICT - ZERO FLUFF):
+- Start with at most ONE single short character impact/intro phrase (e.g. "Greetings from the abyss! Here is your update:").
+- Immediately give the exact logistics status, carrier, ETA, and backer notes in 2-3 direct lines or simple bullet points.
+- Do NOT use fantasy metaphors for shipping or logistics terms (use plain terms: shipped, delayed, warehouse, carrier, tracking).
+- Do NOT add decorative closing statements, dramatic lore, or fluff text after the facts.
+- ZERO HALLUCINATION: State ONLY the exact facts present in the provided logistics status data.
+- INDIVIDUAL ORDER / TRACKING / PLEDGE NUMBER RULE: Our AI assistant ONLY has access to regional/macro shipping status updates and CANNOT access personal pledge IDs, tracking numbers, or individual order details. If the user provides a tracking number, pledge number, order ID, or asks about their specific individual package status (e.g. "my order", "my tracking #", "my pledge", "meu pedido #"), explicitly explain that the AI only handles regional status, and direct them to open a support ticket to check individual pledge/tracking details.
 """
 
 CATEGORIES = [
@@ -63,6 +80,7 @@ CATEGORIES = [
     "cancelamento",
     "rastreamento",
     "game_rules",
+    "chitchat",
     "outro",
 ]
 
@@ -101,6 +119,12 @@ GAME_RULE_TERMS = (
     "combat",
     "how do i",
     "how to",
+    "what is",
+    "what does",
+    "meaning",
+    "definition",
+    "keyword",
+    "keywords",
     "ataque",
     "atacar",
     "corpo a corpo",
@@ -123,6 +147,18 @@ GAME_RULE_TERMS = (
     "combate",
     "como faco",
     "como faço",
+    "o que e",
+    "o que é",
+    "o que significa",
+    "significa",
+    "significam",
+    "significado",
+    "termo",
+    "termos",
+    "palavra chave",
+    "palavras chave",
+    "palavra-chave",
+    "palavras-chave",
 )
 
 
@@ -289,13 +325,46 @@ def _detect_project_from_text(text: str) -> str | None:
     return None
 
 
+def _looks_like_chitchat(text: str) -> bool:
+    import unicodedata
+    decomposed = unicodedata.normalize('NFKD', text or "")
+    normalized = "".join(c for c in decomposed if not unicodedata.combining(c))
+    clean = re.sub(r"[^\w\s]", "", normalized).strip().lower()
+    greetings = {
+        "ola", "oi", "bom dia", "boa tarde", "boa noite", "tudo bem", "como vai", 
+        "opa", "e ai", "eae", "hello", "hi", "hey", "how are you", "good morning", 
+        "good afternoon", "good evening", "obrigado", "obrigada", "thanks", 
+        "thank you", "valeu", "tchau", "bye", "tudo bom", "como voce esta", 
+        "quem e voce", "who are you", "o que voce e", "what are you", "salve", 
+        "qual seu nome", "qual e o seu nome", "whats your name"
+    }
+    if clean in greetings:
+        return True
+    prefixes = {"ola", "oi", "hello", "hi", "hey", "salve", "opa", "eae"}
+    suffixes = {"tudo bem", "tudo bom", "como vai", "como voce esta", "how are you", "bom dia", "boa tarde", "boa noite"}
+    for pref in prefixes:
+        if clean.startswith(pref + " "):
+            suff = clean[len(pref):].strip()
+            if suff in suffixes:
+                return True
+    return False
+
+
 def _looks_like_game_rules_question(question: str) -> bool:
     text = (question or "").lower()
     if not text:
         return False
     if any(term in text for term in GAME_RULE_TERMS):
         return True
-    return bool(re.search(r"\b(d|dado|dice)\s*20\b", text))
+    if re.search(r"\b(d|dado|dice)\s*20\b", text):
+        return True
+    try:
+        kw_matches = search_keywords(text, limit=1)
+        if kw_matches and kw_matches[0]["distance"] <= 0.6:
+            return True
+    except Exception:
+        pass
+    return False
 
 
 def _filter_chunks(chunks: list[dict]) -> list[dict]:
@@ -315,6 +384,9 @@ def _build_sources(chunks: list[dict]) -> list[dict]:
 
 
 def classify_question(question: str) -> str:
+    if _looks_like_chitchat(question):
+        return "chitchat"
+
     if _looks_like_game_rules_question(question):
         return "game_rules"
 
@@ -333,6 +405,7 @@ def classify_question(question: str) -> str:
         f"- pagamento: payment issues\n"
         f"- cancelamento: order cancellations\n"
         f"- rastreamento: shipment tracking\n"
+        f"- chitchat: casual greetings, pleasantries, small talk, politeness, or simple conversational messages (e.g. 'Olá', 'Hello', 'Good morning', 'Tudo bem?', 'Como vai?', 'Obrigado', 'Who are you?', 'Quem é você?').\n"
         f"- outro: anything else\n\n"
         f"Question: {question}\n"
         f"Respond with ONLY the category name, nothing else."
@@ -403,6 +476,13 @@ GAME RULES questions (how to play, mechanics, setup, rules, components):
 - If project is UNKNOWN: status = "need_info", ask which game they want to know about
 - Available game projects with rulebooks: Drunagor, Battleforge, Dante
 - follow_up example: "Which game are you asking about? We have rulebooks for Drunagor and Battleforge."
+
+GREETINGS / CHITCHAT / CASUAL CONVERSATION (status: "ready", no project/region/product language needed):
+These are simple greetings, pleasantries, small talk, or questions about who you are:
+- "olá", "oi", "hello", "hi", "bom dia", "tudo bem?", "como vai?"
+- "who are you?", "quem é você?", "what is your name?", "qual seu nome?"
+- "thanks", "obrigado", "valeu"
+These are always "ready" because they do not require any project, region, or product language to be answered.
 
 GENERIC questions (status: "ready", no project/region needed):
 These ask about policies, processes, or how to handle situations in general:
@@ -669,12 +749,73 @@ def _prepare_rag_context(
 ) -> dict:
     model = Config.get_llm_model()
 
-    # If game_rules category and project is set, search ONLY in manual segments
+    if category == "chitchat":
+        character_prompt = get_character_prompt(project, region)
+        LANG_NAMES = {
+            "pt": "Portuguese",
+            "en": "English",
+            "es": "Spanish",
+            "de": "German",
+            "fr": "French",
+            "it": "Italian",
+            "ja": "Japanese",
+            "zh": "Chinese",
+            "ko": "Korean",
+            "ru": "Russian",
+            "nl": "Dutch",
+            "pl": "Polish",
+        }
+        response_language_rule = "- ALWAYS respond in the SAME LANGUAGE as the user's question."
+        if language:
+            lang_name = LANG_NAMES.get(language, language.upper())
+            response_language_rule = f"- ALWAYS respond in {lang_name}. This is mandatory, even if the user writes in another language."
+
+        if character_prompt:
+            system_prompt = (
+                f"{character_prompt}\n\n"
+                "CHITCHAT RESPONSE STYLE (STRICT):\n"
+                "- You are talking to a player/user who is greeting you or initiating a casual conversation.\n"
+                "- Respond naturally and warmly, fully in character.\n"
+                "- Keep the response brief (1-3 sentences) and ask how you can help them in character.\n"
+                "- Do NOT retrieve rules or logistics. Do NOT mention any files or tickets.\n"
+                f"{response_language_rule}"
+            )
+        else:
+            system_prompt = (
+                "You are a friendly customer support assistant for Creative Games Studio (CGS).\n\n"
+                "CHITCHAT RESPONSE STYLE (STRICT):\n"
+                "- Respond naturally, warmly, and politely to the user's greeting/pleasantry.\n"
+                "- Keep it very brief (1-2 sentences) and ask how you can help them.\n"
+                "- Do NOT mention rules or logistics. Do NOT mention any files or tickets.\n"
+                f"{response_language_rule}"
+            )
+
+        return {
+            "empty": False,
+            "context": "",
+            "sources": {"tickets": [], "logistics": []},
+            "model": model,
+            "system_prompt": system_prompt,
+            "user_prompt": f"GREETING/CHITCHAT: {question}",
+            "ticket_chunks": [],
+            "logistics_chunks": [],
+            "category": category,
+        }
+
+    # If game_rules category and project is set, search keywords first then manual segments
     if category == "game_rules" and project:
+        keyword_chunks = search_keywords(question, project=project, limit=3)
         manual_chunks = search_manual_segments(
             question, project=project, limit=max_chunks
         )
-        if not manual_chunks:
+
+        # Sort Errata / Official Clarification chunks to the very top so Erratas override base rules
+        if manual_chunks:
+            errata_chunks = [c for c in manual_chunks if "errata" in (str(c.get("section_title", "")) + str(c.get("chunk", ""))).lower()]
+            non_errata_chunks = [c for c in manual_chunks if "errata" not in (str(c.get("section_title", "")) + str(c.get("chunk", ""))).lower()]
+            manual_chunks = errata_chunks + non_errata_chunks
+
+        if not keyword_chunks and not manual_chunks:
             not_found_messages = {
                 "pt": "Não encontrei informações sobre isso no manual do jogo.",
                 "en": "No relevant information found in the game manual.",
@@ -694,7 +835,15 @@ def _prepare_rag_context(
             )
             manual_not_found = _with_support_fallback(manual_not_found, language)
             return {"empty": True, "model": model, "not_found_msg": manual_not_found}
+        
         context_parts = []
+        for kw in keyword_chunks:
+            kw_title = kw["keyword"]
+            kw_desc = _sanitize_text(kw["description"])
+            kw_icon = kw.get("icon")
+            icon_str = f" [Icon Image: {kw_icon}]" if kw_icon else ""
+            context_parts.append(f"EXACT KEYWORD DEFINITION: {kw_title}{icon_str}\n{kw_desc}")
+
         for c in manual_chunks:
             section = c.get("section_title", "")
             page = c.get("page_number", "")
@@ -730,6 +879,16 @@ def _prepare_rag_context(
                 }
                 for c in manual_chunks
             ],
+            "keywords": [
+                {
+                    "id": kw["id"],
+                    "title": kw["keyword"],
+                    "description": kw["description"],
+                    "icon": kw.get("icon"),
+                    "distance": kw.get("distance", 0.0),
+                }
+                for kw in keyword_chunks
+            ]
         }
         character_prompt = get_character_prompt(project, region)
         LANG_NAMES_MANUAL = {
@@ -763,9 +922,8 @@ def _prepare_rag_context(
                 "- Stay lightly in character while explaining the rules, but do not sacrifice clarity.\n"
                 "\n"
                 "ANSWER LENGTH (STRICTLY ENFORCED — overrides any tendency to elaborate from your persona):\n"
-                "- Simple questions: 2-5 direct lines.\n"
-                "- Complex questions: use enough steps, exceptions, and examples to be correct.\n"
-                "- Do not be short if being short would make the rule unclear or incomplete.\n"
+                "- Simple questions (e.g. player count, session duration, page number): 1-2 direct lines.\n"
+                "- Complex questions or explaining mechanics (e.g. how combat works, how to lose, how corruption works): explain the rules completely using the provided manual excerpts. Do not be short if being short would make the rule unclear or incomplete.\n"
                 "- Do NOT add flavor text, dramatic preamble, or restate the question.\n"
                 "- Do NOT add context the user did not ask for.\n"
                 "- Lists: maximum 5 items, each one line.\n"
@@ -791,9 +949,8 @@ def _prepare_rag_context(
                 f"If the excerpts do not answer the question, say you could not find it and direct the user to support: {SUPPORT_URL}\n"
                 "\n"
                 "ANSWER LENGTH (STRICTLY ENFORCED):\n"
-                "- Simple questions: 2-5 direct lines.\n"
-                "- Complex questions: use enough steps, exceptions, and examples to be correct.\n"
-                "- Do not be short if being short would make the rule unclear or incomplete.\n"
+                "- Simple questions (e.g. player count, session duration, page number): 1-2 direct lines.\n"
+                "- Complex questions or explaining mechanics (e.g. how combat works, how to lose, how corruption works): explain the rules completely using the provided manual excerpts. Do not be short if being short would make the rule unclear or incomplete.\n"
                 "- Do NOT restate the question or add unrequested context.\n"
                 "- Lists: maximum 5 items, each one line.\n"
                 "\n"
@@ -1024,6 +1181,7 @@ def _prepare_rag_context(
         system_prompt = (
             f"{character_prompt}\n\n"
             f"{GLOBAL_RESPONSE_STYLE}\n"
+            f"{LOGISTICS_RESPONSE_STYLE}\n"
             "SUPPORT KNOWLEDGE:\n"
             "- You have access to past support ticket examples and logistics data. "
             "Use them as reference to answer the user's actual problem — but translate everything "
@@ -1280,7 +1438,7 @@ def generate_rag_stream(
         missing_logistics = _missing_logistics_context(
             _project, _region, _product_language
         )
-        if category == "game_rules" or category in LOGISTICS_CONTEXT_CATEGORIES or (
+        if category == "game_rules" or category == "chitchat" or category in LOGISTICS_CONTEXT_CATEGORIES or (
             category not in LOGISTICS_CONTEXT_CATEGORIES and _region
         ):
             enhanced_query = question
@@ -1586,7 +1744,7 @@ def generate_rag_response(
         missing_logistics = _missing_logistics_context(
             _project, _region, _product_language
         )
-        if category == "game_rules" or category in LOGISTICS_CONTEXT_CATEGORIES or (
+        if category == "game_rules" or category == "chitchat" or category in LOGISTICS_CONTEXT_CATEGORIES or (
             category not in LOGISTICS_CONTEXT_CATEGORIES and _region
         ):
             enhanced_query = question
