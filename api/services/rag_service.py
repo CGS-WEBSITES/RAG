@@ -53,7 +53,7 @@ GAME RULES RESPONSE STYLE (STRICT - ZERO HALLUCINATION, ERRATA PRIORITY & BOOK A
 - BOOK & EXPANSION ATTRIBUTION: Always specify which book or expansion a rule originates from. When a rule differs or is expanded in an expansion (e.g. Corebox vs Apocalypse vs Desert of Hellscar vs Rise of Undead Dragon), explicitly state which rule belongs to which book:
   - **Corebox (Age of Darkness)**: [rule]
   - **[Expansion Name] Expansion**: [expansion rule]
-- STRICT ZERO HALLUCINATION: Do NOT invent, speculate, or extrapolate rules or lore. If the provided excerpts do not explicitly contain the rule, say clearly: "I could not find the exact rule for this in the manual."
+- STRICT ZERO HALLUCINATION: Do NOT invent, speculate, or extrapolate rules or lore. If the provided excerpts do not explicitly contain the rule for the exact scenario queried, you MUST state clearly: "Não encontrei essa regra específica no manual." Do not try to guess, assume, or extrapolate based on standard RPG logic or general board game rules.
 - Use minimal character flavor (at most one short phrase). Clarity and rule accuracy beat persona.
 - Start directly with the rule/mechanic, not with greetings or lore preambles.
 - Only add page references when the provided manual excerpt includes a page.
@@ -918,7 +918,7 @@ def _prepare_rag_context(
                 "GAME RULES KNOWLEDGE:\n"
                 "- You have access to the official game rulebook. Use it to answer the user's question accurately.\n"
                 "- Use ONLY the provided rulebook excerpts as factual source. Do not invent rules from general board game knowledge.\n"
-                f"- If the excerpts do not answer the question, say you could not find it and direct the user to support: {SUPPORT_URL}\n"
+                f"- If the excerpts do not explicitly contain the rule for the exact scenario queried, you MUST state that you could not find the rule in the manual and direct the user to support: {SUPPORT_URL}\n"
                 "- Stay lightly in character while explaining the rules, but do not sacrifice clarity.\n"
                 "\n"
                 "ANSWER LENGTH (STRICTLY ENFORCED — overrides any tendency to elaborate from your persona):\n"
@@ -946,7 +946,7 @@ def _prepare_rag_context(
                 f"{GAME_RULES_RESPONSE_STYLE}\n"
                 "Use the provided rulebook excerpts to answer the player's question accurately and clearly.\n"
                 "Use ONLY the provided excerpts as factual source. Do not invent rules from general board game knowledge.\n"
-                f"If the excerpts do not answer the question, say you could not find it and direct the user to support: {SUPPORT_URL}\n"
+                f"If the excerpts do not explicitly contain the rule for the exact scenario queried, you MUST state that you could not find the rule in the manual and direct the user to support: {SUPPORT_URL}\n"
                 "\n"
                 "ANSWER LENGTH (STRICTLY ENFORCED):\n"
                 "- Simple questions (e.g. player count, session duration, page number): 1-2 direct lines.\n"

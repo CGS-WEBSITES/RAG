@@ -192,7 +192,7 @@ def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dic
             LIMIT %s
         )
         SELECT * FROM ranked
-        WHERE distance <= 0.65
+        WHERE distance <= 0.80
         ORDER BY distance
     """
     with get_cursor() as cur:
