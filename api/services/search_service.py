@@ -192,7 +192,7 @@ def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dic
             LIMIT %s
         )
         SELECT * FROM ranked
-        WHERE distance <= 1.2
+        WHERE distance <= 0.80
         ORDER BY distance
     """
     with get_cursor() as cur:
@@ -306,3 +306,84 @@ def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dic
         }
         for row in rows
     ]
+
+
+def search_keywords(query: str, project: str = "Drunagor", limit: int = 3) -> list[dict]:
+    query = (query or "").strip()
+    if not query:
+        return []
+
+    limit = max(1, min(int(limit), 10))
+    clean_query = query.strip().lower()
+
+    # Direct / substring matching on keyword name
+    exact_sql = """
+        SELECT
+            k.id,
+            k.keyword,
+            k.description,
+            k.icon,
+            0.0 AS distance
+        FROM public.keywords k
+        WHERE LOWER(k.keyword) = %s
+           OR LOWER(k.id) = %s
+           OR LOWER(k.keyword) LIKE %s
+        ORDER BY LENGTH(k.keyword) ASC
+        LIMIT %s
+    """
+    like_query = f"%{clean_query}%"
+
+    rows = []
+    seen_ids = set()
+    with get_cursor() as cur:
+        cur.execute(exact_sql, (clean_query, clean_query, like_query, limit))
+        exact_rows = list(cur.fetchall())
+
+        for r in exact_rows:
+            seen_ids.add(r["id"])
+            rows.append({
+                "id": r["id"],
+                "keyword": r["keyword"],
+                "description": r["description"],
+                "icon": r["icon"],
+                "distance": 0.0,
+            })
+
+        if len(rows) < limit:
+            query_embedding = list(_embed_cached(clean_query))
+            vec_literal = "[" + ",".join(f"{x:.8f}" for x in query_embedding) + "]"
+            vector_sql = """
+                WITH ranked AS (
+                    SELECT
+                        k.id,
+                        k.keyword,
+                        k.description,
+                        k.icon,
+                        emb.embedding <=> (%s)::vector AS distance
+                    FROM public.keywords_embedding_store emb
+                    JOIN public.keywords k ON k.id = emb.id
+                    WHERE k.project = %s
+                    ORDER BY distance
+                    LIMIT %s
+                )
+                SELECT * FROM ranked
+                WHERE distance <= 1.3
+                ORDER BY distance
+            """
+            cur.execute(vector_sql, (vec_literal, project, limit))
+            vec_rows = cur.fetchall()
+            for r in vec_rows:
+                if r["id"] not in seen_ids:
+                    seen_ids.add(r["id"])
+                    rows.append({
+                        "id": r["id"],
+                        "keyword": r["keyword"],
+                        "description": r["description"],
+                        "icon": r["icon"],
+                        "distance": round(float(r["distance"]), 4),
+                    })
+                if len(rows) >= limit:
+                    break
+
+    return rows
+
