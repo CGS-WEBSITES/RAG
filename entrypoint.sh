@@ -72,7 +72,8 @@ exec gunicorn \
     --bind 0.0.0.0:5000 \
     --worker-class gthread \
     --workers 1 \
-    --threads 4 \
+    --threads 2 \
+    --backlog 64 \
     --timeout 600 \
     --log-level info \
     "api.app:create_app()"

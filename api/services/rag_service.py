@@ -18,7 +18,12 @@ from api.services.search_service import (
 from api.services.history_service import save_chat
 from api.services.character_prompts import get_character_prompt, get_character_name
 
+import threading
+
 logger = logging.getLogger(__name__)
+
+# Smooth out peak CPU/RAM spikes by limiting concurrent heavy RAG pipelines to 2
+_RAG_CONCURRENCY_SEMAPHORE = threading.Semaphore(2)
 
 MAX_CHUNK_LENGTH = 500
 RELEVANCE_THRESHOLD = 0.58
