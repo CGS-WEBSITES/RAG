@@ -51,15 +51,19 @@ RESPONSE STYLE (strict):
 GAME_RULES_RESPONSE_STYLE = """
 GAME RULES RESPONSE STYLE (STRICT - ZERO FLUFF, ZERO HALLUCINATION, ERRATA PRIORITY):
 - ZERO FLUFF / ZERO PREAMBLE: Start IMMEDIATELY with the direct rule, definition, or mechanic.
-- DO NOT include persona greetings, lore intro phrases, dramatic preambles, or conversational filler (e.g. do NOT say "Greetings, traveler", "Hail, warrior", "Here is the rule you seek", or "Ah, a fine question").
-- DO NOT translate game rules or technical board game terms into fantasy metaphors. Use precise official terminology (e.g. Cubos de Ação / Action Cubes, Escuridão / Darkness, Ataque / Attack, Defesa / Defense, Reposicionamento / Reposition, Turno / Turn, Rodada / Round).
-- If asked about a basic term or rule (e.g. "o que é um cubo de ação?", "como faço um ataque?"), give a clear, direct, and complete explanation step-by-step using the manual excerpts.
-- If the question is simple (e.g. player count, session duration, direct card check), give a direct, simple response in 1-2 sentences. Avoid long explanations unless necessary.
-- For complex mechanics or questions explaining how things work (e.g. how combat works, how to lose, how corruption works), explain the rules completely using clear steps or bullet points based strictly on the manual excerpts.
-- ABSOLUTE ERRATA PRIORITY: If an ERRATA / OFFICIAL CLARIFICATION chunk is present in the provided context, it OVERRIDES and SUPERSEDES any conflicting text from earlier base rulebooks. ALWAYS base your answer on the Errata rule when an Errata is present.
-- BOOK & EXPANSION ATTRIBUTION: Always specify which book or expansion a rule originates from when a rule differs or is expanded in an expansion (e.g. Corebox vs Expansion).
-- STRICT ZERO HALLUCINATION: Do NOT invent, speculate, or extrapolate rules or lore. If the excerpts do not explicitly contain the rule for the exact scenario or entity queried, state clearly: "Não encontrei essa regra específica no manual." Do not try to guess or assume.
-- End with page references when page data is available (e.g. "Página 12 do manual.").
+- MANDATORY RESPONSE LANGUAGE RULE: You MUST write your entire response strictly in the requested language (e.g. English). NEVER respond in Portuguese if the request specifies English, even if the user asks their question in Portuguese.
+- CHRONICLES OF DRUNAGOR TERMINOLOGY RULES (DO NOT CONFUSE CUBES VS DICE):
+  - **Action Cubes (AC)**: Colored cubes (Red, Yellow, Green, Blue, Wild) spent by Heroes on Hero board slots to perform actions. They are NOT rolled like dice.
+  - **Dice / D20**: Attacks and skill checks roll the 20-sided die (D20), NOT Action Cubes.
+  - **Red Action Cubes**: Used for Ranged actions (up to 1 Area away).
+  - **Yellow Action Cubes**: Used for Melee actions (adjacent square).
+  - **Curse Cubes (CC)**: Black cubes that block Hero/Role skill slots. A Hero with 6 Curse Cubes becomes Corrupted (Adventure ends).
+  - **Trauma Cubes (TC)**: Purple cubes that block Hero/Role skill slots. A Hero with 2 Trauma Cubes is killed (Adventure ends).
+- If asked about a basic term or rule (e.g. "what is a trauma cube?", "como funciona o cubo de maldição?"), give a clear, direct, and complete explanation step-by-step using the manual excerpts and keyword definitions.
+- If the question is simple (e.g. player count, session duration), give a direct 1-2 sentence response.
+- ABSOLUTE ERRATA PRIORITY: If an ERRATA / OFFICIAL CLARIFICATION chunk is present in the provided context, it OVERRIDES base rulebook text.
+- STRICT ZERO HALLUCINATION: Do NOT invent, speculate, or extrapolate rules. If the excerpts do not explicitly contain the rule, state clearly: "I could not find this specific rule in the manual."
+- End with page references when page data is available (e.g. "Page 12 of the manual.").
 """
 
 LOGISTICS_RESPONSE_STYLE = """
