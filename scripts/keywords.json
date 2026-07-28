@@ -1,0 +1,1153 @@
+{
+  "keyword": [
+    {
+      "id": "action-cubes-(ac)",
+      "keyword": "ACTION CUBES (AC)",
+      "description": "Colored cubes spend by Heroes to use their skills.\n"
+    },
+    {
+      "id": "activate",
+      "keyword": "ACTIVATE",
+      "description": "Activate is the instruction to take a turn. So, when you Activate a Monster, for example, you take a turn\nwith that Monster: its Conditions trigger at the beginning of the turn, then its Triggered Abilities fire, and finally it\ntakes a Movement Action and/or an Attack Action. See also: ACTIVATE A PET.\n"
+    },
+    {
+      "id": "activate-a-pet",
+      "keyword": "ACTIVATE A PET",
+      "description": "The targeted Hero ACTIVATES one of their Pets (Move Action + Attack). If that Hero has no Pet on the board, \nthey may spend this ACTIVATION to summon one: Take the chosen Pet’s card and place it near that Hero’s board \nand place that Pet's token (or model) in a Square adjacent to the Hero. Pets ACTIVATE for free once per round, \nimmediately after their master’s turn (starting with the one in which they are summoned).\n"
+    },
+    {
+      "id": "adj-or-adjacent",
+      "keyword": "ADJ OR ADJACENT",
+      "description": "This effect can only affect a Target in an adjacent SQUARE to the casting\nCharacter, regardless of the Skill's Range.\n"
+    },
+    {
+      "id": "all",
+      "keyword": "ALL",
+      "description": "An effect with this term means equivalent to the damage the Target\nis receiving. The effect still only applies to one Target of an attack, not both\nor more, during MULTISHOT, CLEAVE or STRIKE.\n"
+    },
+    {
+      "id": "ambush",
+      "keyword": "AMBUSH",
+      "description": "Monster teleports to any unoccupied space adjacent to its target of\nthat target's choice. Suffers from terrain landed on.\n"
+    },
+    {
+      "id": "area",
+      "keyword": "AREA",
+      "description": "Refers to a blue square on a map tile containing 4 small SQUARES.\n"
+    },
+    {
+      "id": "armor",
+      "keyword": "ARMOR",
+      "description": "Whenever a Monster with this ability is hit by a <img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\"> \n(and only this type of Attack), PREVENT the indicated amount of damage dealt to it.\n"
+    },
+    {
+      "id": "attack-twice",
+      "keyword": "ATTACK TWICE",
+      "description": "This Monster attacks twice during the same turn. Each attack is resolved separately, meaning it can generate more than one Threat. \nEven though it attacks twice, the Monster has only one Move Action—so if its target moves out of its range by \nReacting (<img src=\"/icons/reactions.svg\" class=\"inline-icon\" alt=\"Reactions\">) to the first Attack, the Monster cannot perform the \nsecond one. If a Monster with this ability suffers STUN, it will attack only once. Monsters “Lock On” to their target at the \nbeginning of their ACTIVATION, so even if the Hero targeted by the first Attack is no longer the Monster’s Primary Target for the \nsecond, it will still attack that Hero.\n"
+    },
+    {
+      "id": "aura",
+      "keyword": "AURA",
+      "description": "A hero can only have one and is removed when the hero is KNOCKED OUT\nand receives a TRAUMA CUBE. (Not removed during Camp Phase)\n"
+    },
+    {
+      "id": "aura-(token)",
+      "keyword": "AURA (TOKEN)",
+      "description": "As a Resolution effect, a Hero is often instructed to write down an\nAura on their Campaign Log or Companion App. You can keep this token on your board\nas a tactile and visual reminder that you have a special effect noted there. Aura\ntokens are Reminder tokens and were introduced in Apocalypse.\n"
+    },
+    {
+      "id": "aura-of-sickness",
+      "keyword": "AURA OF SICKNESS",
+      "description": "At the beginning of this Monster's turn, trigger the Poison condition on all Heroes, Pets, and Companions.\n"
+    },
+    {
+      "id": "available",
+      "keyword": "AVAILABLE",
+      "description": "Available refers more to a game term than necessarily a Keyword. An\nAvailable Skill, for example, is a Skill learned by a Hero that does not have\nits slot currently occupied (either by an Action Cube, Curse Cube, or Trauma Cube).\nAn Available Resolution, in turn, is a Resolution that has not yet been chosen\nin a Charged Interaction or has not been declared “unavailable” by some effect.\n"
+    },
+    {
+      "id": "avoid",
+      "keyword": "AVOID",
+      "description": "Avoid is not properly a Keyword, however, it is a new term in relation\nto the Corebox, so it is worth clarifying. “Avoid” is used to indicate that you\ndo not suffer some effect, much as PREVENT would, but since PREVENT is a Keyword,\nthe adoption of a different term is necessary.\n"
+    },
+    {
+      "id": "bash",
+      "keyword": "BASH",
+      "description": "Bash is a trait characteristic of the Hero Andreas. Whenever a Skill\nhas Bash, at the moment you are about to resolve the effect containing the Bash\nKeyword, you may discard 2 Shield tokens. If you do, add the effect described\nbetween the “[]” to your Skill resolution. Otherwise, you must resolve that Skill\nwithout considering it a part of the effect.\n"
+    },
+    {
+      "id": "bear-trap",
+      "keyword": "BEAR TRAP",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/beartrap.png",
+      "description": "All enemies in AREA take 2 non-preventable Damage, BLEED 2, DISCARD.\n"
+    },
+    {
+      "id": "beginning-of-turn-(bot)",
+      "keyword": "BEGINNING OF TURN (BOT)",
+      "description": "BOT is an abbreviation used to describe the “Beginning of Turn” moment\nof time, when some Characters’ special abilities are triggered, right after they\nsuffer the effects of the Conditions they possess that also trigger at the beginning\nof their turn.\n"
+    },
+    {
+      "id": "bleed-x",
+      "keyword": "BLEED X",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/bleed.png",
+      "description": "The Target takes X BLEED tokens. At the beginning of that character's\nnext turn, it takes 1 non-preventable damage for each BLEED token it has and then removes all of them from its board. \nBLEED is a STACKABLE Condition.\n"
+    },
+    {
+      "id": "blink",
+      "keyword": "BLINK",
+      "description": "This Monster moves through alternate realities that shorten its path. When this Monster takes a Movement Action, \nit teleports to a Square adjacent to its target, chosen by that target, instead of walking across the board.\n"
+    },
+    {
+      "id": "blindness",
+      "keyword": "BLINDNESS",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/blind.png",
+      "description": "This is a special ability that a few Monsters possess and that turns\nthem into very dangerous enemies. When a Character suffers BLINDNESS, they must\ntake a BLIND token and keep it on their board. While holding a BLIND Token, the\nCharacter automatically misses any weapon attack if their natural d20 roll is\n10 or lower, even if they have succeeded on their Weapon's Accuracy check. BLINDNESS\nis a Redundant Condition that lasts until the Character takes a Recall Action\nor it is removed by a CLEANSE effect.\n"
+    },
+    {
+      "id": "blood-feast",
+      "keyword": "BLOOD FEAST",
+      "description": "As a Collateral Damage effect, all Monsters of this type permanently gain +1 DMG. Mark this with a +1 DMG token on their card.\n"
+    },
+    {
+      "id": "bloodseeker",
+      "keyword": "BLOODSEEKER",
+      "description": "A Monster with Bloodseeker Targets the Weakest Hero (The one with the\nlowest Health at the moment) as its Primary Target.\n"
+    },
+    {
+      "id": "bounty",
+      "keyword": "BOUNTY",
+      "description": "Bounty replaces and updates the “LOOT” Keyword that Companions had\nin Age of Darkness. Therefore, when a Monster is defeated by an attack that has\nBOUNTY, that Monster drops a LOOT token when removed from the board (LOOT tokens\nare Ground Movable Objects that can be collected with a Minor Action; when collecting\nLoot, a Hero draws a Chest card, but does not roll the Trap Die).\n"
+    },
+    {
+      "id": "brittle",
+      "keyword": "BRITTLE",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/brittle.png",
+      "description": "Some attacks are capable of leaving their opponents vulnerable. When\na Character suffers Brittle, they must take a Brittle token and keep it on their\nboard. If they are a Hero, Pet, or Companion of any sort, the next time they suffer\ndamage from any source, they will suffer double that damage and remove their Brittle\ntoken (remember, suffered damage is the damage taken that was not prevented).\nIf they are a Monster, the next weapon or magic attack that hits them turns into\na Critical Hit and removes their Brittle token. Brittle lingers until it is removed\nor is triggered as described. It is a Redundant Condition.\n"
+    },
+    {
+      "id": "burn-x",
+      "keyword": "BURN X",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/burn.png",
+      "description": "The Target takes X BURN tokens. At the beginning of that character's\nnext turn, it takes 1 non-preventable damage for each BURN token it has and then\nremoves one of those tokens from its board. BURN is a STACKABLE Condition.\n"
+    },
+    {
+      "id": "cancel",
+      "keyword": "CANCEL",
+      "description": "Cancel is a term that has come to be associated with Interruptions\ndue to their ability to respond to an attack while it is being delivered, rather\nthan after it has already hit its target. When an attack is Canceled, this means\nthat it no longer exists and doesn’t cause damage to any of its targets anymore.\nCharacters who have already used Interrupts for a Canceled attack are still considered\nto have used those abilities, but after the attack is Canceled, no other Characters\ncan use an Interrupt (and of course, no Reactions) against that attack.\n"
+    },
+    {
+      "id": "cast",
+      "keyword": "CAST",
+      "description": "This term is used to define the moment when an effect is applied in\nthe game, often related to the Character responsible for causing it. So, when\nyour Hero spends one of their Action Cubes to use a Battle Focus Skill, for example,\nthat Hero is casting a FOCUS 1 AND CLEANSE 1 effect.\n"
+    },
+    {
+      "id": "catalyze",
+      "keyword": "CATALYZE",
+      "description": "This is a Keyword designed to condense an effect into a single word,\nsaving text space. When a Hero Catalyzes, it means that the next Action Cube they\nuse this turn (current turn only) is treated as a Wild Cube (if it is used to\nuse a Hero Skill, treat all numbers written in their numerical form as if they\nwere doubled). Wild Cubes can be used as if they were any color, but it is important\nto remember that the Range for the effects of a Skill activated using a Wild Cube\nis based on its Type (i.e., a Melee Skill activated through a Wild Cube still\nhas Melee Range).\n"
+    },
+    {
+      "id": "cd-collateral-damage",
+      "keyword": "CD (COLLATERAL DAMAGE)",
+      "description": "This effect is applied to the target of an Attack if that Attack successfully reduces their Health. \nDiscarding SHIELD tokens does not count as reducing Health.\n"
+    },
+    {
+      "id": "chain-up",
+      "keyword": "CHAIN-UP",
+      "description": "Monsters with this skill specialize in capturing Heroes. At the beginning\nof their turn, immediately after suffering the effects of any Condition that might\nbe affecting them, a Monster with Chain-Up targets the Strongest Hero who is not\nadjacent and within Range 1 (if there is such a Hero). That Hero suffers 2 non-preventable\ndamage and is dragged to an empty square of their choice that is adjacent to the\nMonster with Chain-Up. If there is no space for them, the Hero suffers 4 non-preventable\ndamage instead of 2, but they are not dragged.\n"
+    },
+    {
+      "id": "channel",
+      "keyword": "CHANNEL",
+      "description": "As long as a Skill with Channel has an Action Cube occupying its slot\n(not when it is blocked by a Curse Cube or Trauma Cube), the passive bonus described\nin “Channel - Effect” takes effect as if it were a Passive Skill. This benefit\nis also applied to the very Skill that generated it. It lasts until this Action\nCube is recalled.\n"
+    },
+    {
+      "id": "character",
+      "keyword": "CHARACTER",
+      "description": "Heroes, Monsters, Pets, NPCs, Companions and so on. All can receive\neffects like PREVENT, but only characters with cards or boards can hold Conditions\nor Resources. Characters are Movable Solid Objects for rules purposes.\n"
+    },
+    {
+      "id": "charge",
+      "keyword": "CHARGE",
+      "description": "\"Some Monsters have the ability to charge their enemies to maximize\ntheir attacks. Whenever a Monster with this ability moves 3 or more squares in\norder to reach their target, consider the base damage value of this attack as\nif it were double. Remember: Monsters will always move the least amount of squares\nthey can in order to reach their targets or seek a position on top of Darkness.\nDespite this ability, Monsters are not smart enough to take the longest way to\nreach their target and receive this bonus. Their behavior remains the same: they\nmove as few squares as possible to the target unless they can finish the movement\nupon Darkness or can avoid harmful terrain while doing so. Darkness damage boost,\nas well as damage reducers like Intimidate, are counted after this base value\nhas been determined.\"\n"
+    },
+    {
+      "id": "charm",
+      "keyword": "CHARM",
+      "description": "\"By enchanting the simple-mindedness of a Creature of Darkness, a Hero\ncan force it to attack its own allies. When a Monster is Charmed, the player who\nbewitched it immediately activates that Monster and controls its turn. In this\nway, you can force it to attack its own allies, move through harmful terrain,\nor position them in a disadvantageous or inefficient way. However, while fighting\nto keep control of its own mind, a Monster is weaker: its attack deals only half\n(round up) of the damage it would normally (collateral damage is applied as normal).\nDarkness damage boost, as well as damage reducers like Intimidate, are counted\nafter this base value has been determined.\"\n"
+    },
+    {
+      "id": "claim",
+      "keyword": "CLAIM",
+      "description": "Claim is a typical Warlord effect, representing their ability to coordinate\nthe assaults of their allies. When a Hero uses Claim, they place (or replace)\nthe Banner on an empty square that is adjacent to them. While under the influence\nof a Banner, as a Minor Action, a Hero may discard an INSPIRATION token to make\na Weapon Attack of +0 HIT. For rules purposes, all squares that are adjacent to\na Banner are considered “Under the Banner”. Finally, Banners are Movable Solid\nObjects considered Furniture and, therefore, can be crushed by Large Monsters\nand cause 2 DMG AND BLEED 2 if they are thrown at a Character.\n"
+    },
+    {
+      "id": "cleanse-x",
+      "keyword": "CLEANSE X",
+      "description": "The target removes up to X Curse Cubes or Condition Stacks from its board. A Stack is: all tokens of the same kind\nthe Character has. For each CLEANSE point received, that Character may choose\nto remove a Curse Cube or a Condition Stack. They don’t have to spend all the\npoints the same way.\"\n"
+    },
+    {
+      "id": "cleave",
+      "keyword": "CLEAVE",
+      "description": "This <img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\"> targets two Characters within Range. Make a single D20 roll for both targets.\n"
+    },
+    {
+      "id": "closest",
+      "keyword": "CLOSEST",
+      "description": "Monsters that target the Closest Hero as their Primary Target seek the Hero who is physically nearest to them. \nMonsters that attack Multiple Targets or areas still prioritize hitting as many Heroes as possible, but always choose the \nClosest ones among the combinations they can reach. If two or more Heroes are at the same distance from a Monster, \nthe one who acts first on the Initiative Track is considered the Closest Hero among them.\n"
+    },
+    {
+      "id": "color-blind-trait",
+      "keyword": "COLOR BLIND (TRAIT)",
+      "description": "You may use Agility cubes to perform Ranged Skills and vice versa. When you use an Agility cube in this way, the effect of that \nRanged Skill can target enemies anywhere on the board, as if it were an Agility Skill.\n"
+    },
+    {
+      "id": "command",
+      "keyword": "COMMAND",
+      "description": "Activates the next Strongest Monster (not itself), then continues its\nturn.\n"
+    },
+    {
+      "id": "command-a-draugr",
+      "keyword": "COMMAND A DRAUGR",
+      "description": "To Command a Draugr means to activate a Draugr of your choice that\nis already on the board. Unlike other Pets, Draugrs cannot be “Raised” through\na “Command” effect or vice-versa. For them, these effects act independently. Other\nthan this detail, Draugrs follow the same rules as a Pet when it comes to their\nturns and for other rules purposes.\n"
+    },
+    {
+      "id": "command-a-pet",
+      "keyword": "COMMAND A PET",
+      "description": "Command a Pet is an effect similar to Activate a Pet, with the restriction\nthat it can never be used to invoke a Pet on the board. So, when you Command a\nPet you have summoned, you must choose a Pet that is already on the board and\nthat is affiliated with you to Activate.\n"
+    },
+    {
+      "id": "companions",
+      "keyword": "COMPANIONS",
+      "description": "Activates after the hero they follow, Move then Attack. Will only be\nattacked if no hero is in range. Top left number is STURDINESS. Can hold SHIELDS\nand receive PREVENT effects.\n"
+    },
+    {
+      "id": "copy-effect",
+      "keyword": "COPY EFFECT",
+      "description": "Copies effect of another Hero skill including its base color (range).\n**Dungeon Roll Skills, Equipment Skills and Reactions, unless stated otherwise,\ncannot be copied.**\n"
+    },
+    {
+      "id": "counter",
+      "keyword": "COUNTER X",
+      "description": "This Monster counterattacks. Whenever a Hero misses a <img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\"> \nagainst this Monster, it deals X non-preventable damage to each Hero, Pet, and Companion adjacent to it.\n"
+    },
+    {
+      "id": "cover",
+      "keyword": "COVER",
+      "description": "Some protective abilities that Heroes possess go beyond just mitigating\ndamage; they can also change the target of an attack. When a Character Covers\nthe target of an attack, they redirect that attack to themselves, becoming the\nnew target of that attack. Any Prevent effect that comes with a Cover effect is\nalso redirected to the new target of that attack. If an attack is targeting you\nand another target at the same time, you can still Cover that other Character,\nbut you will suffer both attacks as if you had been targeted by it twice.\n"
+    },
+    {
+      "id": "covetous",
+      "keyword": "COVETOUS",
+      "description": "A Monster with Covetous Targets the Hero that is holding more Resource\ntokens (FOCUS, SHIELD, and KI are examples) as its Primary Target. If two Heroes\nare tied with the same number of Resource tokens, a Monster with Covetous targets\nthe one among them who occupies the fastest Initiative Slot.\n"
+    },
+    {
+      "id": "crit-x",
+      "keyword": "CRIT X+",
+      "description": "Roll X or more on D20 gives Critical Hit (x2 DMG). Does not inflict\ndouble conditions.\n"
+    },
+    {
+      "id": "cube-action-(ca)",
+      "keyword": "CUBE ACTION (CA)",
+      "description": "Spending an AC. A hero can perform 2 AC per turn and may use other\nactions before, between or after each AC. Reactions do not count.\n"
+    },
+    {
+      "id": "cube-range-(cr)",
+      "keyword": "CUBE RANGE (CR)",
+      "description": "Defined by color of cube used. Yellow (Melee) = Target on an adjacent\nSQUARE. Red (Ranged) = Target on any SQUARE up to 1 AREA away. Green (Agility)\n/ Blue (Wisdom) = Target at any distance.\n"
+    },
+    {
+      "id": "curse-cubes-(cc)",
+      "keyword": "CURSE CUBES (CC)",
+      "description": "Black cubes allocated to Hero or Dungeon Role skill slots, blocking their use. Received when hit by Curse X effects or when forced to take a Curse Cube. A Hero becomes Corrupted when they receive a 6th Curse Cube, causing the Adventure to end in failure. (Page 15 of Age of Darkness Rulebook)"
+    },
+    {
+      "id": "curse-x",
+      "keyword": "CURSE X",
+      "description": "Target gains X CC as an effect.\n"
+    },
+    {
+      "id": "darkness-behavior",
+      "keyword": "DARKNESS BEHAVIOR",
+      "description": "Darkness tries to get to the Strongest Hero that isn't already in a square with Darkness. \"Crush\": If all Heroes are already on top of Darkness when a Rune is drawn, Skip spawning\ntile and all Heroes take N Damage. (N = Number of Heroes).\n"
+    },
+    {
+      "id": "darkness-effect-(standing-on-it)",
+      "keyword": "DARKNESS EFFECT (STANDING ON IT)",
+      "description": "Once per turn, deals 2 non-preventable Damage to a Hero, Companion\nor Pet caught by it when spawned; stepped on it for first time in a turn; or ended\ntheir turn on top of it. Heroes: Imposes a -2 HIT penalty to Heroes standing on top of it. Monsters get a +2 DMG bonus while standing on it.\nMonsters always prioritize moving onto Darkness when it's possible to hit their target from it.\n"
+    },
+    {
+      "id": "decayed",
+      "keyword": "DECAYED",
+      "description": "This Monster’s life is fleeting. When it takes an Attack Action, after resolving it, it is killed.\n"
+    },
+    {
+      "id": "defiant",
+      "keyword": "DEFIANT",
+      "description": "A Monster with Defiant Targets the Most Vigorous Hero (the one with\nmost available Action Cubes at the moment) as its Primary Target.\n"
+    },
+    {
+      "id": "devourer",
+      "keyword": "DEVOURER",
+      "description": "\"Monsters with this ability show atypical behavior. They prioritize\nlooking for prey rather than victims. Therefore, such Monsters have Injured NPC\ntokens as their Primary Target instead of the Heroes. When they attack one of\nthese tokens, they immediately slay them, satiating their bloodthirst. This, however,\nis not a good thing: After doing so, these Monsters complete their purpose and\ntheir bodies undergo a hideous mutation. Replace the Rotten Flesh model with an\nAbomination model and flip over the Unstable Devourer card. It gains 12 Health\n(this Health can exceed its maximum total) and becomes a Ravenous Abomination.\nIf there are no Injured NPCs on the board (if your party has rescued them all,\nfor example) this Monster’s behavior shifts to the standard: the Strongest Hero\nin range.\"\n"
+    },
+    {
+      "id": "difficult-terrain",
+      "keyword": "DIFFICULT TERRAIN",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/dificultterrain.png",
+      "description": "A character that is affected by Difficult Terrain (like Water) loses\n1 movement point from its current move effect. As with any harmful terrain, a\ncharacter can only be affected by Difficult Terrain once per turn.\n"
+    },
+    {
+      "id": "disarm",
+      "keyword": "DISARM",
+      "description": "(Counts as FATIGUE) EXPEND all available Melee and Ranged AC.\n"
+    },
+    {
+      "id": "discard",
+      "keyword": "DISCARD",
+      "description": "A cube is considered DISCARDED when a Hero moves it directly to their Expended Cubes Box for any reason (usually as FATIGUE or as the cost of taking extra Minor Actions).\n"
+    },
+    {
+      "id": "drain-health",
+      "keyword": "DRAIN HEALTH",
+      "description": "Target loses X amount of health and caster gains it. Reactions cannot\nbe used.\n"
+    },
+    {
+      "id": "drunk-trait",
+      "keyword": "DRUNK (TRAIT)",
+      "description": "Alcohol is flowing through your body. Take 3 Time tokens and place them on your Hero board. At the start of each of your next turns, remove 1 of these tokens (this is a Start of Turn effect, resolved before Condition damage is applied). When the last token is removed, you are no longer DRUNK.\n"
+    },
+    {
+      "id": "empower",
+      "keyword": "EMPOWER",
+      "description": "Concentrating your energy, you prepare to deliver a powerful blow.\nWhen you Empower, the next single Weapon Attack or Spell Attack you make this\nturn gains +4 DMG. Note that this effect lasts only until the end of this turn\nor when you make your next Weapon Attack or Spell Attack (even if you miss), whichever\ncomes first. If an effect allows you to make two or more separate Weapon Attack\nas part of the same Action, the Empower effect is only applied to the first of\nthem (Cleave is a single hit that affects two or more targets, so this bonus applies\nto all of them).\n"
+    },
+    {
+      "id": "end-of-turn-(eot)",
+      "keyword": "END OF TURN (EOT)",
+      "description": "\"EOT is an abbreviation used to describe the “End of Turn” moment of\ntime, when some effects are triggered, such as those that last until the end of\nthe Character’s turn. The End of Turn is exactly the last thing that happens in\na turn, before the Initiative 81 Marker is moved forward: it triggers right after\na Hero has completed all their Actions and chooses whether or not to take a Willing\nRecall Action. If some effect triggers because of this Recall Action, the End\nof Turn occurs immediately after the resolution of that effect\"\n"
+    },
+    {
+      "id": "enemy",
+      "keyword": "ENEMY",
+      "description": "Any character that is not in your party or an NPC. Heroes are monster's\nenemies.\n"
+    },
+    {
+      "id": "engaged",
+      "keyword": "ENGAGED",
+      "description": "When a Character is adjacent to an Enemy. Ranged Attacks and most Minor Actions are not allowed.\n"
+    },
+    {
+      "id": "enrage",
+      "keyword": "ENRAGE",
+      "description": "Some Monsters have a taste for battle that grows as they inflict wounds\non their enemies. Whenever a Monster possessing this ability as Collateral Damage\ncan reduce a Character’s Health or remove a Special Character (Pet, Companion,\nor any other kind of ally) from play with an attack, it gains a +1 DMG token.\nIf the Monster has Attack Twice, the second attack made on its activation may\ndo more damage, since this Monster may receive a +1 DMG token as a result of the\nfirst attack.\n"
+    },
+    {
+      "id": "entropy",
+      "keyword": "ENTROPY",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/entropy.png",
+      "description": "\"Specialists in spellcasting can bring about miraculous transformations\nin their spells by releasing large amounts of energy. Whenever they do, the energy\noscillation resulting from this process generates what we call Arcane Entropy,\nor just Entropy. When a Hero has 4 of these tokens, they can discard them to provoke\nan Entropy Burst and do one of two things: As a Minor Action, to gain an additional\nCube Action this turn; Or to gain an additional Reaction against the current Threat.\nEntropy is a STACKABLE Resource token.\"\n"
+    },
+    {
+      "id": "evolve",
+      "keyword": "EVOLVE",
+      "description": "Monster gains +2 DMG and +1 MOVE. Use the corresponding tokens to track this in the Monster's board.\n"
+    },
+    {
+      "id": "expend",
+      "keyword": "EXPEND",
+      "description": "Move an available AC to Expended AC box on hero board. Expended AC\ncan be recalled but not used for skills while there.\n"
+    },
+    {
+      "id": "falling-damage",
+      "keyword": "FALLING DAMAGE",
+      "description": "Character suffers 2 non-preventable Damage when descending two levels\nin a single step.\n"
+    },
+    {
+      "id": "farthest",
+      "keyword": "FARTHEST",
+      "description": "Monsters that target the Farthest Hero as their Primary Target seek the Hero who is physically farthest from them but \nstill within reach. Monsters that attack Multiple Targets or areas still prioritize hitting as many Heroes as possible, \nbut always choose the Farthest ones among the combinations they can reach. If one of these Monsters has the option to \nhit the second-Farthest Hero along with another Hero or Pet instead of hitting only the Farthest Hero, it prioritizes \nthe former scenario. If two or more Heroes are at the same distance from a Monster, the one who acts last on the Initiative \nTrack is considered the Farthest Hero among them. If the Monster cannot reach any Hero, it moves toward the Farthest Hero at Any Range.\n"
+    },
+    {
+      "id": "fatigue-x",
+      "keyword": "FATIGUE X",
+      "description": "Target must EXPEND X (or as many as possible) of their available AC\nfor no effect.\n"
+    },
+    {
+      "id": "fe-fatality-effect",
+      "keyword": "FE (FATALITY EFFECT)",
+      "description": "Fatality Effects, just like Collateral Damage, are Triggered Effects tied to a ¹ or ². Apply the described effect if the Attack kills its target.\n"
+    },
+    {
+      "id": "fire-trap",
+      "keyword": "FIRE TRAP",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/firetrap1.png",
+      "description": "All enemies in AREA take 2 non-preventable Damage, BURN 4, DISCARD.\n"
+    },
+    {
+      "id": "firebreather-trait",
+      "keyword": "FIREBREATHER (TRAIT)",
+      "description": "Your throat is on fire and it’s a shame to keep this sensation to yourself. As a Minor Action, you may expel a fireball that deals 4 ¹ DMG WITH ‘CD – BURN 2’ to each Character in any Area at Any Range of your choice. Large Monsters targeted by this fireball suffer the effect twice (8 ¹ DMG WITH CD – BURN 4).\n"
+    },
+    {
+      "id": "flyby",
+      "keyword": "FLYBY",
+      "description": "This pet returns to a SQUARE of their choice adjacent to its master after attacking. Only affected by terrain/Darkness once landed.\n"
+    },
+    {
+      "id": "focus-x",
+      "keyword": "FOCUS X",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/focus.png",
+      "description": "The Target gains X FOCUS tokens, which they can later spend to use\nFocus Abilities. FOCUS is a STACKABLE resource.\n"
+    },
+    {
+      "id": "free-recall-action",
+      "keyword": "FREE RECALL ACTION",
+      "description": "Hero takes a RECALL ACTION without taking a CC penalty.\n"
+    },
+    {
+      "id": "fruit-of-life",
+      "keyword": "FRUIT OF LIFE",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/fruit_of_life.png",
+      "description": "\"With a Use Consumable Item Minor Action, a Character holding a FRUIT\nOF LIFE may discard it to: SELF, REGAIN 2 HEALTH. Additionally, these fruits are\nconsidered items and may be exchanged with other Heroes like any other item would\nnormally be, but they do not occupy any bag space. FRUIT OF LIFE is a STACKABLE\nresource.\"\n"
+    },
+    {
+      "id": "fury",
+      "keyword": "FURY",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/Fury.png",
+      "description": "When you hit with a Spell Attack or Weapon Attack, you may discard\n1 FURY to add +1 DMG to your Attack. You may discard only 1 FURY token per turn\nor Reaction (If you have an ability that is also a Reaction, for example). FURY\nis STACKABLE resource. *Apocalypse updated FURY as follows:* When you hit with a Spell Attack or Weapon Attack, you may discard 1 FURY to add\n+1 DMG to your Attack (no action required). You may discard 1 FURY token for each\nindividual Weapon Attack or Spell Attack you make, which can be more than once\nper tur. FURY is a STACKABLE resources. **NOTE:** Whenever you discard\n1 Fury in order to boost an attack that targets more than one Character at once\n(CLEAVE and STRIKE, for instance) the bonus damage is dealt to each target. You\ndon't need to discard 1 Fury token for each Character targeted this way.\n"
+    },
+    {
+      "id": "gain-a-x-bonus",
+      "keyword": "GAIN A +X BONUS",
+      "description": "Whenever the Hero casts an effect with the relevant Keyword, that effect gains the appropriate number of additional points. For example, if a Hero casts a HEAL 2 effect and has an ability that grants a +1 bonus to each HEAL effect they cast, the effect becomes HEAL 3.\n"
+    },
+    {
+      "id": "guard",
+      "keyword": "GUARD",
+      "description": "The casting Character suffers the damage that the targeted Character would have taken. PREVENT effects linked to this Keyword protect the new target of the Attack.\n"
+    },
+    {
+      "id": "heal",
+      "keyword": "HEAL",
+      "description": "Restores Health Points to the targeted Character. As a rule, Characters cannot recover more Health Points than their maximum. \"Overheals\" are wasted.\n"
+    },
+    {
+      "id": "heal-x",
+      "keyword": "HEAL X",
+      "description": "Target regains X Health that cannot exceed max Health.\n"
+    },
+    {
+      "id": "healthy",
+      "keyword": "HEALTHY",
+      "description": "Healthy is a health state that Characters can be in. Characters who have half or more (rounded up) of their maximum Health Points \nare considered Healthy. Some abilities interact with Characters under these conditions.\n"
+    },
+    {
+      "id": "heavy-wield",
+      "keyword": "HEAVY WIELD",
+      "description": "Weapons that have the Heavy Wield property are harder to handle, but\nusually do more damage when they hit. While you are equipped with a Weapon that\nhas Heavy Wield, you can make only a single Weapon Attack from each Weapon Attack\naction you take or receive. So, you can't make two Weapon Attack from a single\nCube Action (as you would with the Twin Strike Skill, for example), Focus Ability,\nClass Ability, or Command you take or receive while using these weapons. But you\ncan, for example, make a Weapon Attack through each of your two Cube Actions and\na third through your Focus Ability or by spending a KI token.\n"
+    },
+    {
+      "id": "idol",
+      "keyword": "IDOL",
+      "description": "Idols are figures that possess magical properties which Heroes are\nable to summon to aid them in battle. When an Idol is Invoked, the Hero places\nor repositions (if that Idol is already on the board) its matching token on the\ncenter intersection of the area (blue square) they are in or in an area adjacent\nto it. Take note that just Invoking an Idol does not activate its effects immediately\n(Shamans have a class ability that allows them to do this as a special power).\nOnce placed, the Idol is considered an Immovable Ground Object, meaning that it\ncan’t be moved by any means, including Telekinesis. Each Idol has a power that\ncan be Evoked by any Hero (not only the casting one) within Range 1 of that Idol\nusing a Minor Action and spending any combination of 2 Resource tokens\n"
+    },
+    {
+      "id": "immunity",
+      "keyword": "IMMUNITY",
+      "description": "This character cannot be affected by the conditions/effect. Stealth\nimmunity means they can target that unit and cannot be surprised (x2 DMG).\n"
+    },
+    {
+      "id": "inflict",
+      "keyword": "INFLICT",
+      "description": "This is the term used to designate an effect (usually Conditions) applied\nby a casting Character against a target Character without giving them a chance\nto defend themselves, similar to what non-preventable damage would do. Thus, an\nInflicted effect does not generate any Attack or Threat (even if it comes from\nan Attack card, for example), not allowing Characters to use their Interrupts\nand Reactions to defend themselves. Remember, if a Character is immune to a Condition,\nnaturally, such Condition does not affect it when it is Inflicted on it.\n"
+    },
+    {
+      "id": "inspire",
+      "keyword": "INSPIRE",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/inspiration.png",
+      "description": "Representing a morale boost, when a Hero becomes Inspired, they receive\nan Inspiration token. By discarding one of these tokens (no action required) a\nHero can reroll any d20 roll they have just made, taking the second result even\nif it is lower than the first. Inspiration is a redundant Resource.\n"
+    },
+    {
+      "id": "interact",
+      "keyword": "INTERACT",
+      "description": "Interactions are situations that happen during an Adventure in which\nyour Hero can (or should) intervene. Some Interactions will be presented to your\nparty through in-game effects, but most of them will be found on the board as\nInteraction tokens.\n"
+    },
+    {
+      "id": "intimidate-x",
+      "keyword": "INTIMIDATE X",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/intimidate.png",
+      "description": "Character has -X DMG for each INTIMIDATE token they are holding. Unlike\nother Conditions, INTIMIDATE does not take effect at the beginning of their next\nturn, it lingers until removed instead. The next time the affected character makes\nan Attack (either a Weapon Attack or a Spell Attack), whether it hits or misses,\nit removes all INTIMIDATE tokens they are holding. INTIMIDATE is a STACKABLE Condition.\n"
+    },
+    {
+      "id": "interrupt",
+      "keyword": "INTERRUPT",
+      "description": "These are alternative, faster, but unique reactions. The window for a Hero to use an INTERRUPT occurs at the moment \nan Attack (whether from a Monster, a Boss, or a Commander Attack card) targets a Hero, Pet, or Companion. \nThe Hero uses the INTERRUPT and applies its effects before the Attack’s damage is dealt and SHIELD tokens are spent. \nWhen a Hero uses an INTERRUPT, they cannot use Reactions (³) to respond to Threats triggered by the Attack they interrupted.\n"
+    },
+    {
+      "id": "jump-x",
+      "keyword": "JUMP X",
+      "description": "Same as MOVE X but only affected by terrain landed on and can move\nthrough enemies. Not affected by FALLING DAMAGE. Climbing up 2 levels still costs\n2 movement.\n"
+    },
+    {
+      "id": "keen",
+      "keyword": "KEEN",
+      "description": "The Critical Hit threshold for this <img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\"> is \nincreased to Natural 16+. “Natural” refers to the value rolled on the D20, ignoring any bonuses or penalties.\n"
+    },
+    {
+      "id": "ki",
+      "keyword": "KI",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/ki.png",
+      "description": "You may discard a KI to make a Weapon Attack with +0 HIT. Regardless\nif you have spent a KI to make a Weapon Attack or to use any other ability you\nhave learned, you may only discard one KI per turn or Reaction (If you have an\nability that is also a Reaction, for example). KI is STACKABLE resource.\n"
+    },
+    {
+      "id": "killing-blow",
+      "keyword": "KILLING BLOW",
+      "description": "The Killing Blow is the attack (and in this case it is necessarily an attack,\nCondition damage doesn't count, for example) that is responsible for defeating\nthe Monster. If an effect Slays a Character, naturally, it also delivers the Killing\nBlow, since the term Slay specifies that it defeats the Character even though\nit doesn't reduce its Health to 0.\n"
+    },
+    {
+      "id": "knock-down",
+      "keyword": "KNOCK DOWN",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/knock_down.png",
+      "description": "KNOCK DOWN is a Debilitating Condition. When a Character suffers KNOCK DOWN, they take the appropriate token and place \nit on their board. At the start of their next turn, they discard the KNOCK DOWN token and lose their Move Action for \nthat turn. Heroes may still take additional Move Actions following the proper rules, but Monsters will only be able to \nattack if there is a Hero within range. KNOCK DOWN is a Redundant Condition (only 1 instance at a time).\n"
+    },
+    {
+      "id": "large-monster",
+      "keyword": "LARGE MONSTER",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/large_monster.png",
+      "description": "This Monster is considered Large (even if its base is small-sized).\nA Large Monster is immune to KNOCK DOWN, PUSH, STUN, and TELEKINESIS.\n"
+    },
+    {
+      "id": "learn",
+      "keyword": "LEARN",
+      "description": "When your Hero learns a Hero or Role Skill Level 1, they must choose a Level 1\nSkill from their Hero, take its respective card and Action Cube, and add\nthem to their Hero Board. <br /><br /> **NOTE:** It is important to remember that\na Hero cannot Learn a Hero Skill of Level 2 if they have not learned a\nLevel 1 Skill belonging to that same Skill Tree. When a Hero learns a Class Ability, they take a White Cube. They place\nthe card beside their board and the cube on the appropriate space to mark the\nClass Ability they have learned. <br /><br /> **NOTE:** Likewise, it is important\nto remember that a Hero cannot Learn a Class Ability of Level 2 or 3 if they have\nnot learned a Class Ability of Level 1 or 2 (respectively) belonging to that same\nClass Tree.\n"
+    },
+    {
+      "id": "loot",
+      "keyword": "LOOT",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/loot.png",
+      "description": "When this Monster is defeated, replace him model\nwith a Chest. It is safe (no Trap die on opening).\n"
+    },
+    {
+      "id": "loot-(tokens)",
+      "keyword": "LOOT (TOKENS)",
+      "description": "\"Loot tokens are Movable Ground Objects that can be picked up by Heroes\nwho are adjacent to or on top of them with a Minor Action. When they do, they\ndraw the top card of the Chest deck, but do not have to roll the Trap Die: Loot\nis always safe. Like a Chest, the moment a Hero draws a Consumable Item, they\ncan choose to use it immediately as a free action. Otherwise, they keep that card\nin their bag.\"\n"
+    },
+    {
+      "id": "maelstrom",
+      "keyword": "MAELSTROM",
+      "description": "On Overlord's activation, you shuffle their Attack cards back into\nthe deck and draw a new set (one per Hero).\n"
+    },
+    {
+      "id": "manifest",
+      "keyword": "MANIFEST",
+      "description": "Randomly take one Rune from the bag and reveal it, triggering the effect.\nDoes not spawn Darkness and is placed back in the bag.\n"
+    },
+    {
+      "id": "mark",
+      "keyword": "MARK",
+      "description": "MARK is a Debilitating Condition. When a Character suffers MARK, they take the appropriate token and \nplace it on their board. From that point on, any <img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\"> \nmade by the owner of the MARK against that Character gains a +1 DMG bonus. MARK is a Redundant Condition (only 1 instance at a time).\n"
+    },
+    {
+      "id": "mending-x",
+      "keyword": "MENDING X",
+      "description": "Monsters with this ability are field doctors in the enemy's service,\nkeeping their allies ready for another round. When this ability is triggered,\nanother weaker Monster (the Monster with the lowest Health at the time) within\nrange 1 of the casting Monster regains X Health (this Health cannot exceed its\nmaximum). If two or more Monsters are tied, the one that occupies the highest\ncolor slot on the Monster Status board between them will be the chosen target\n(yellow is higher than dark blue, for example). If there is no other Monster within\nRange 1 of the caster, a Monster cannot use Mending on itself.\n"
+    },
+    {
+      "id": "mindlock",
+      "keyword": "MINDLOCK",
+      "description": "Monsters with this ability are able to interfere with the Heroes thoughts\njust by being in their presence. While a Monster with this ability is on the board,\nno Hero can spend (blue) Wisdom Action Cubes to use Skills. They can still Expend\nthese cubes to take Tie-Breaker Actions, additional Minor Actions, additional\nMove Actions, and so on.\n"
+    },
+    {
+      "id": "most-corrupted",
+      "keyword": "MOST CORRUPTED",
+      "description": "Monsters that target the Most Corrupted Hero as their Primary Target seek the Hero with the highest number of Curse Cubes \nat that moment. Monsters that attack Multiple Targets or areas still prioritize hitting as many Heroes as possible, \nbut always choose the Most Corrupted ones among the combinations they can reach. If one of these Monsters has the option to \nhit the second-Most Corrupted Hero along with another Hero or Pet instead of hitting only the Most Corrupted Hero, it \nprioritizes the former scenario. If two or more Heroes have the same number of Curse Cubes, the one who acts last on the \nInitiative Track is considered the Most Corrupted Hero among them.\n"
+    },
+    {
+      "id": "most-tired-hero",
+      "keyword": "MOST TIRED HERO",
+      "description": "The Hero with the fewest available Action Cubes is the Most Tired Hero.\nIf two Heroes are tied with the same number of available Action Cubes, the one who acts last on the \nInitiative Track is considered the Most Tired among them.\n"
+    },
+    {
+      "id": "most-vigorous-hero",
+      "keyword": "MOST VIGOROUS HERO",
+      "description": "The Hero with the most available Action Cubes is the Most Vigorous\nHero. If two Heroes are tied with the same number of available Action Cubes, the\none who acts first on the Initiative Track is considered the Most Vigorous among them.\n"
+    },
+    {
+      "id": "move-x",
+      "keyword": "MOVE X",
+      "description": "Target may move up to X SQUARES orthogonally or diagonally. Cannot\npass through SOLID OBJECTS or ENEMIES but can pass through not land on allies.\nMovement may be interrupted to do a Minor Action then continued, but using a CA\nor REACTION will lose remaining movement points.\n"
+    },
+    {
+      "id": "multishot",
+      "keyword": "MULTISHOT",
+      "description": "This <img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\"> targets two Characters within Range. \nMake a single D20 roll for both targets.\n"
+    },
+    {
+      "id": "non-preventable",
+      "keyword": "NON-PREVENTABLE",
+      "description": "This damage cannot be prevented by any kind of effect, including SHIELD\nand/or PREVENT. Non-Preventable damage is not considered a threat and thus can't\nbe responded to with Reactions.\n"
+    },
+    {
+      "id": "npc",
+      "keyword": "NPC",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/npc.png",
+      "description": "NPC (Non-Player Characters) are the bystanders of a Campaign. Some\nNPC Tokens are used to represent your Companions on the board, while others just\nembody generic NPCs as \"Villagers\" or \"Children.\" Regardless, an NPC Token is\na Solid Object and every time they are used, they follow a set of special rules\nof their own. Each Adventure will describe exactly how these tokens interact with\nthe players and the current Adventure.\n"
+    },
+    {
+      "id": "object",
+      "keyword": "OBJECT",
+      "description": "Traps, Darkness tiles, or others specified as such. Characters can\npass through and end movement on them.\n"
+    },
+    {
+      "id": "outcome",
+      "keyword": "OUTCOME",
+      "description": "Only erased when commanded by another Interaction resolution.\n"
+    },
+    {
+      "id": "overpressure",
+      "keyword": "OVERPRESSURE",
+      "description": "Some Monsters possess eldritch energy so powerful that they distort\nspace-time and often emanate disrupting vibes. Therefore, while a Monster with\nthis ability is on the board, no Hero can take Minor Actions except for “Use a\nConsumable Item” if they are taking this action to drink a potion.\n"
+    },
+    {
+      "id": "passive",
+      "keyword": "PASSIVE",
+      "description": "Ability is always active (including Commander Attack cards) unless\nblocked by TRAUMA CUBE or CURSE CUBE.\n"
+    },
+    {
+      "id": "pay-x-life",
+      "keyword": "PAY X LIFE",
+      "description": "Hero takes X Damage to apply benefits. Cannot use if X > current Health.\n"
+    },
+    {
+      "id": "penitence",
+      "keyword": "PENITENCE",
+      "description": "Target takes 1 non-preventable Damage per CURSE CUBE on their board.\n"
+    },
+    {
+      "id": "pet",
+      "keyword": "PET",
+      "description": "Pets are allies that some Heroes summon to aid them in battle. Pet cards are not placed on the Initiative Track. \nThey always ACTIVATE immediately after their master’s turn, before the marker moves to the next card on the track. \nWhen a Pet activates while already on the board, it takes a Move Action (it may choose to move 0 squares) then performs an Attack. \nPets deal the Damage shown on their card directly. They do not need to make Accuracy Tests. \nMonsters only target Pets when they are unable to attack a Hero. Pets have only 1 Health Point but may receive SHIELD tokens \nand PREVENT effects as normal. When a Pet dies, it is dismissed. Remove its model from the board. It may be summoned again later.\n"
+    },
+    {
+      "id": "poison",
+      "keyword": "POISON",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/poison.png",
+      "description": "POISON is a Persistent Damage Condition. When a Character suffers POISON, they take the appropriate number of tokens \nand place them on their board. At the start of their turn, they suffer 1 non-preventable damage for each POISON token they have. \nPOISON is a STACKABLE Condition (up to 4 instances).\n"
+    },
+    {
+      "id": "poison-trap",
+      "keyword": "POISON TRAP",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/poisontrap.png",
+      "description": "All enemies in AREA take 2 non-preventable Damage, POISON 2, DISCARD.\n"
+    },
+    {
+      "id": "predator",
+      "keyword": "PREDATOR",
+      "description": "Monsters with this ability possess the instincts of an assassin. Double the base power of this Monster’s Attacks against \nHeroes who have half or less (rounded down) of their maximum Health Points (i.e., a Wounded Hero). For example, if the \nMonster has a base power of 4, it becomes 8 when Attacking a Hero under these conditions.\n"
+    },
+    {
+      "id": "prevent",
+      "keyword": "PREVENT",
+      "description": "PREVENT is associated with Reactions (<img src=\"/icons/reactions.svg\" class=\"inline-icon\" alt=\"Reactions\">) \nand is used to mitigate damage being caused by a Threat. PREVENT cannot reduce damage that is described as “non-preventable.”\n"
+    },
+    {
+      "id": "primary-target",
+      "keyword": "PRIMARY TARGET",
+      "description": "A Monster's Primary Target is the character it seeks to attack during\nits turn. If the Monster cannot reach its Primary Target, it moves toward them\ninstead. \n"
+    },
+    {
+      "id": "protect",
+      "keyword": "PROTECT",
+      "description": "This character becomes the Target unless already a Target due to CLEAVE,\nMULTISHOT or STRIKE.\n"
+    },
+    {
+      "id": "push-x",
+      "keyword": "PUSH X",
+      "description": "Push the Target X SQUARES away from the Caster in a straight line.\nMust be pushed entire length.\n"
+    },
+    {
+      "id": "pushback",
+      "keyword": "PUSHBACK",
+      "description": "This effect is similar to Push, but it is a version adapted to be used\nby Monsters. When a Character undergoes Pushback, they must push their model 1\nsquare back, that is, further away from the source that pushed them. Effectively,\nthey will have three squares to which they can be pushed. A Character who has\nsuffered Pushback must always choose an unoccupied space where they can be pushed,\neven if it is a harmful terrain or if they have to suffer fall damage because\nthey were pushed from a dungeon tray level 2 to 0. If all possible squares are\noccupied by Solid Objects, the Character cannot be pushed.\n"
+    },
+    {
+      "id": "quick-attack",
+      "keyword": "QUICK ATTACK",
+      "description": "This Monster's attack does not generate a Threat. Therefore, Heroes cannot use Reactions or Interrupts to respond to it.\n"
+    },
+    {
+      "id": "raise",
+      "keyword": "RAISE",
+      "description": "At the beginning of this Monster's turn, spawn X Minions on squares adjacent\nto it. If there are not enough Monsters models, spawn as many as possible and ACTIVATE one of them.\n"
+    },
+    {
+      "id": "raise-a-draugr",
+      "keyword": "RAISE A DRAUGR",
+      "description": "Reusing the evil energy used by the Darkness to make its Creatures,\nNecromancers can create an army of their own. Raising a Draugr means placing one\nof them in an empty square of your choice that is adjacent to you, loyal to the\nNecromancer who summoned it. Unlike other Pets, Draugrs cannot be “Raised” through\na “Command” effect or vice-versa. Likewise, the generic effect of “Activate a\nPet of your choice” doesn’t work to Raise or Command them. Only the specific effects\nof Raise a Draugr and Command a Draugr affect these creatures. Other than this\ndetail, Draugrs follow the same rules as Pets when it comes to their turns and\nother rules purposes. If all four Draugrs are already on the board, a Necromancer\ncan no longer Raise them, only Command them (note that unlike other Pets, an effect\nthat allows you to Raise a Draugr does not allow you to Command a Draugr—these\nare separate effects for the Necromancer). **NOTE:** Draugrs that are\nraised during the Draugrs turn (the one the Pets have after their masters turn)\ndo not act during that activation. **NOTE:** A Necromancer can Raise\nall four Draugrs, even though they can only sustain two of them during their turn.\n"
+    },
+    {
+      "id": "range-x",
+      "keyword": "RANGE X",
+      "description": "Range is counted using X AREAS away.\n"
+    },
+    {
+      "id": "rangers-mark",
+      "keyword": "RANGER'S MARK",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/ranger_mark.png",
+      "description": "When a character is Marked, it receives a RANGER'S MARK token. All\nWeapon Attacks and Spell Attacks made by the Ranger against a character they marked\ndeals +1 DMG. As mentioned earlier, this damage is doubled if the character scores\na Critical Hit as normal.\n"
+    },
+    {
+      "id": "reactions",
+      "keyword": "REACTIONS",
+      "description": "Reactions (<img src=\"/icons/reactions.svg\" class=\"inline-icon\" alt=\"Reactions\">) can be used whenever any Hero is \nThreatened—that is, when preventable damage is about to be dealt to them. All damage is considered preventable \nunless described as “non-preventable” (as with Conditions). Each Hero may use one Reaction per Threat. \nThis means that if two Heroes are Threatened at the same time, a Hero may use one Reaction for each of them.\n"
+    },
+    {
+      "id": "recall-ac",
+      "keyword": "RECALL AC",
+      "description": "Return the indicated number of SPENT Action Cubes (those allocated to Skills) or DISCARDED Cubes \n(those in the Expended Cubes Box) to your Pool. A RECALL effect is not the same as taking a Recall Action.\n"
+    },
+    {
+      "id": "recall-x",
+      "keyword": "RECALL X",
+      "description": "You recover to your Available Action Cubes box up to X Spent or Expended\nAction Cubes from your board.\n"
+    },
+    {
+      "id": "reckoner",
+      "keyword": "RECKONER",
+      "description": "A Monster with Reckoner Targets the Most Corrupted Hero (The one with\nmost Curse Cubes at the moment) as its Primary Target.\n"
+    },
+    {
+      "id": "redirect",
+      "keyword": "REDIRECT",
+      "description": "When an effect instructs you to Redirect an attack to you or another\nCharacter, that Character becomes the target of that attack instead. If the Character\nin question is already being targeted by that attack (as it could be in Multishot,\nCleave, or Strike, for example), they suffer it two times, resolving one attack\nat a time. Redirecting an attack does not generate an additional threat, and thus\ndoes not allow an extra Reaction.\n"
+    },
+    {
+      "id": "redundant",
+      "keyword": "REDUNDANT",
+      "description": "A redundant effect means that a character can only hold one token of\nthat specific effect. If a character would gain a second token for a redundant\neffect, just ignore it.\n"
+    },
+    {
+      "id": "regain-x-health",
+      "keyword": "REGAIN X HEALTH",
+      "description": "The target recovers X Health. A Character can never gain more Health\nthan their maximum value. Any excess Health is lost. Since this effect is not\nbound to the Keyword HEAL, your Hero does not receive any bonus from “HEAL +X”\nabilities.\n"
+    },
+    {
+      "id": "regain-your-breath",
+      "keyword": "REGAIN YOUR BREATH",
+      "description": "Recover from being KNOCKED OUT.\n"
+    },
+    {
+      "id": "regeneration-x",
+      "keyword": "REGENERATION X",
+      "description": "Character regains X Health that cannot exceed max Health.\n"
+    },
+    {
+      "id": "reinforce",
+      "keyword": "REINFORCE",
+      "description": "Reinforce is an enhancement that a HEAL effect may have. Whenever this occurs, any Health Points exceeding the target \nCharacter’s maximum are converted into SHIELD tokens (still respecting the stacking limit of 4) instead of being wasted.\n"
+    },
+    {
+      "id": "relearn",
+      "keyword": "RELEARN",
+      "description": "Relearn is a term associated with character progression. It can refer\nto a Hero or Dungeon Role Skill Level 1 or 2, a Skill Upgrade, or the choice of\na Dungeon Role, for example. Relearning something means to replace a choice you\nmade regarding that element. So, Relearn a Dungeon Role is a simple process of\n“swapping” the cards in your Dungeon Role *(keeping your chosen progressions the\nsame as normal)* while Relearn a Skill would be to forget *(remove the progression\nfrom)* a Skill you have and choose another in its place *(remember, when Relearning\na Hero or Dungeon Role Skill, you will need to adjust your Action Cubes accordingly\nand may be forced to Relearn the Level 2 Skill associated with that Skill Tree\nas well).*\n"
+    },
+    {
+      "id": "relentless",
+      "keyword": "RELENTLESS",
+      "description": "A Monster with Relentless Targets the Most Tired Hero (The one with\nfewer available Action Cubes at the moment) as its Primary Target.\n"
+    },
+    {
+      "id": "reroll",
+      "keyword": "REROLL",
+      "description": "When a Skill has REROLL, it means that you get one free reroll of the\nd20 for one Weapon Attack performed by that Skill that you may choose to use when\nyou miss.\n"
+    },
+    {
+      "id": "resolved",
+      "keyword": "RESOLVED",
+      "description": "“Resolved” is the term used to denote the end of some game situation.\nSo, when it is mentioned with an effect, it means right after that effect is applied.\nFor example, analyze the following statement about a basic rule regarding Collateral\ndamage: *“Collateral effects are applied after the damage is resolved.”*\nSo, if a character Reacts with a Tumble Skill against a Shadow Knight’s attack,\nthey will move before being Knocked Down, since the Tumble Skill (and its Jump\n2) must be fully resolved before any Collateral damage applies (if it is applied\nat all). This term can also be found referring to an Interaction or Resolution.\nWhen this is the case, you should know which of these two elements it is connected\nto. This is the key to understanding its meaning. *“Until Interaction...\nis resolved”* means that the Interaction must be done in full; that is, until\nthe Interaction token is removed from the board. This might be because it has\nrun out of charges or an effect has stipulated that it should be removed before\nthat. The sentence *“...this Resolution is resolved”* only applies to\nthe Resolution you are reading at that moment. Even if a Resolution is abruptly\nresolved by its own command, it will still remove 1 charge from the Interaction\ntoken (unless it is a Recurring Interaction or the effect itself specifies otherwise,\nof course).\n"
+    },
+    {
+      "id": "ressurrect",
+      "keyword": "RESURRECT",
+      "description": "Spawn all Monsters listed, placing their models on the board, spawning one at a time in the Rune order shown on the card,\nrepeating the process until all Monsters are spawned.\n"
+    },
+    {
+      "id": "restrain",
+      "keyword": "RESTRAIN",
+      "description": "Characters with the Restrain ability are armed with natural or artificial\nrestraints and can use this ability to always keep their opponents within range.\nWhen a Character is Restrained by an enemy, they receive a Restrain token and\ncannot leave the space they occupy as long as they hold it. A Character may discard\ntheir Restrain token when there are no more enemies with the ability to Restrain\nthem within Range 1. Restrain is a redundant Condition. **NOTE:** Characters\nwho are Restrained are able to leave their space through a Swap effect. When this\nis the case, the Object swapping with the Restrained Character takes its Restrain\ntoken. If this target is not a Character, the Restrain effect ends.\n"
+    },
+    {
+      "id": "retaliate-x",
+      "keyword": "RETALIATE X",
+      "description": "Inflict X Damage to attacker within CR or any range otherwise. Caster\nmust be one of the targets.\n"
+    },
+    {
+      "id": "robust-trait",
+      "keyword": "ROBUST (TRAIT)",
+      "description": "You are so inebriated that you even forget to feel pain. No damage can reduce your Health below 1. This includes non-preventable damage such as Darkness and Persistent Condition damage.\n"
+    },
+    {
+      "id": "roll-x",
+      "keyword": "ROLL X",
+      "description": "Triggers a benefit for attack roll on natural roll. +X HIT modifiers\ndo not trigger this.\n"
+    },
+    {
+      "id": "round",
+      "keyword": "ROUND",
+      "description": "Round is a term used to denote the window of time from the first card\nto receive a turn on the Initiative Track to the last. Thus, we can say that the\nHero playing the Defender Dungeon Role will always be the first Character to act\nin a Round while the Rune card will always be the last. All effects that are measured\nthrough a round (i.e., “...during this round”) end as soon as the Rune card’s\nturn in that round is resolved.\n"
+    },
+    {
+      "id": "self",
+      "keyword": "SELF",
+      "description": "Abilities with the SELF Keyword can only target the casting character.\nFor example: \"SELF, PREVENT 3\" means that the character can prevent 3 damage from\nthemselves only. \n"
+    },
+    {
+      "id": "shadow-aura",
+      "keyword": "SHADOW AURA",
+      "description": "A small Darkness tile is placed under Target. It triggers its effect.\n"
+    },
+    {
+      "id": "shield-x",
+      "keyword": "SHIELD X",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/shield.png",
+      "description": "The target gains X SHIELD tokens. Each SHIELD token can be used to\nabsorb 1 point of incoming damage against the character. You must use all of your\nSHIELD tokens before losing any Health or using a PREVENT effect—you cannot choose\nto take the damage and keep your SHIELD tokens or to PREVENT the damage with another\nSkill in order to save them. SHIELD tokens are a STACKABLE resource.\n"
+    },
+    {
+      "id": "shockwave",
+      "keyword": "SHOCKWAVE",
+      "description": "This Monster inflicts 4 damage to all Champions adjacent to it at the beginning and at the end of its movement.\n"
+    },
+    {
+      "id": "shove",
+      "keyword": "SHOVE",
+      "description": "When two characters would occupy the same space and one of them has\npriority over the other, we say that the first will shove the second. When a character\nis shoved, it is moved to a square that is adjacent to the area (blue square)\nthat it previously occupied. The Party Leader chooses to where a Monster would\nbe shoved to, while a shoved Hero can choose their new position for themselves.\nCharacters suffer the effects of stepping on harmful terrain when they are shoved\ninto them (if they have not suffered them already this turn.)\n"
+    },
+    {
+      "id": "silence",
+      "keyword": "SILENCE",
+      "description": "(Counts as FATIGUE) EXPEND all Agility and Wisdom.\n"
+    },
+    {
+      "id": "skull-cracker",
+      "keyword": "SKULL-CRACKER",
+      "description": "\"Monsters with this ability are terribly dangerous. Attacks made by\ncreatures with this ability will pierce any Sturdiness value automatically. So\nbe careful: the attack of such creatures is lethal against Allies such as Companions,\nFollowers, Pets, and so on (you can still use Prevents from your Reactions or\nInterrupts to try to reduce the damage to 0 and prevent an allied Follower from\nbeing defeated).\"\n"
+    },
+    {
+      "id": "slaughter",
+      "keyword": "SLAUGHTER",
+      "description": "A Monster with Slaughter Targets NPC Tokens (non-Companions) as its\nPrimary Target.\n"
+    },
+    {
+      "id": "slayer",
+      "keyword": "SLAYER",
+      "description": "A Monster with this ability will chase Injured NPC tokens, Cohorts,\nand Followers as their Primary Target, in that order of preference. If there are\ntwo or more of those within reach, the Party Leader chooses which of them will\nbe the target of this Monster this turn. If none of these NPCs are on the board\nor in reach, these Monsters switch their Primary Target to the Strongest Hero.\n"
+    },
+    {
+      "id": "slow",
+      "keyword": "SLOW",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/slow.png",
+      "description": "The Target receives a SLOW token. Unlike other Conditions, SLOW does\nnot take effect at the beginning of that character's next turn, it lingers until\nremoved instead. The next time the affected character receives a Move effect,\nit loses 2 movement points from that effect and removes their SLOW token from\ntheir board. SLOW is a redundant Condition.\n"
+    },
+    {
+      "id": "solid-objects",
+      "keyword": "SOLID OBJECTS",
+      "description": "Characters, Chests, Interactions, Piles of Runes, NPCs, and others\nspecified as such during a setup.\n"
+    },
+    {
+      "id": "soul-shard",
+      "keyword": "SOUL SHARD",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/soul_chard.png",
+      "description": "By confining a fragment of life energy from a creature's spirit within\nthem, these crystals can be used to strengthen the Heroes. As a Minor Action,\nA Hero may discard a Soul Shard to give Double Damage to the next Weapon Attack\nor Spell Attack they make this turn. Note that this effect lasts only until the\nend of this turn or when you make your next Weapon Attack or Spell Attack (even\nif you miss), whichever comes first. If an effect allows you to make two or more\nseparate Weapon Attack as part of the same Action, this effect is only applied\nto the first of them *(Cleave is a single hit that affects two or more targets,\nso this bonus applies to all of them)*. Soul Shards are redundant Resource tokens\nthat can be exchanged between Heroes as if they were Consumable Items.\n"
+    },
+    {
+      "id": "special-mechanic-tokens",
+      "keyword": "SPECIAL MECHANIC TOKENS",
+      "description": "These board elements are used as visual milestones for the function\nof any Special Mechanic established for an Adventure. Special Mechanic tokens\nare Immovable Ground Objects.\n"
+    },
+    {
+      "id": "spell-attack",
+      "keyword": "SPELL ATTACK",
+      "description": "Deals damage directly to the target, requiring no Accuracy Test. \n<img src=\"/icons/1-spell-dmg.svg\" class=\"inline-icon\" alt=\"Spell Damage\"> are not \n<img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\">, and therefore do not take into account \nthe Weapon's Accuracy or Power. However, they can still receive bonuses from Equipment, Hero Skills, and \nClass Abilities, for example.\n"
+    },
+    {
+      "id": "spend",
+      "keyword": "SPEND",
+      "description": "A cube is considered SPENT when a Hero allocates it to one of their Skill or Reaction slots, occupying that space with the cube.\n"
+    },
+    {
+      "id": "spent",
+      "keyword": "SPENT",
+      "description": "An Action Cube is considered spent when it is allocated to a Skill\nslot. Curse Cubes and Trauma Cubes are not considered Action Cubes even when they\nare spent as Action Cubes. They are treated as normal wounds once they become\nallocated to a slot.\n"
+    },
+    {
+      "id": "split",
+      "keyword": "SPLIT",
+      "description": "The points from this effect may be divided among the targets in whichever way is most convenient \nfor the casting Hero. The Hero may not choose to assign “0” points of the effect to a target.\n"
+    },
+    {
+      "id": "spread",
+      "keyword": "SPREAD",
+      "description": "Some attacks scatter around the victim. Whenever a Hero is hit by SPREAD,\nthey reflect the same amount of damage they have suffered (damage suffered is\nthe damage that has been taken and has not been mitigated or PREVENTED) on each\nother Hero that is Adjacent to them. This reflected damage is dealt as non-preventable\ndamage. For example, Vorn has taken 6 damage with SPREAD. After mitigating 2 damage\nwith his 2 SHIELD tokens and PREVENTing 2 damage with a Skill, in the end, he\nsuffered 2 damage. Then, each other Hero that is Adjacent to him takes 2 non-preventable\ndamage.\n"
+    },
+    {
+      "id": "square",
+      "keyword": "SQUARE",
+      "description": "Refers to a white square on map tile.\n"
+    },
+    {
+      "id": "STACKABLE",
+      "keyword": "STACKABLE",
+      "description": "The STACKABLE property means that a character can hold up to 4 copies\nof a same token on their boards/cards. A two-sided token that displays the faces\n1 and 2 must always be considered as if it was the number of individual tokens\nindicated. If a character would receive a fifth token of a STACKABLE effect, just\nignore it. **Example:** *2 tokens of Focus 2 and 4 tokens of Focus 1 are\nconsidered Focus 4 either way.*\n"
+    },
+    {
+      "id": "stalker-(trait)",
+      "keyword": "STALKER (TRAIT)",
+      "description": "Some killers specialize in using stealth to their advantage. As long\nas the Stalker Skill is not blocked, whenever the Slayer's Stealth fades away\n*(that is, it is removed on its own at the beginning of its Hero's turn)*, the\nSlayer remains Hidden until the end of the current Hero's turn or until they try\nto surprise another Character. **Example:** *Nyx received Stealth through\nthe **Sucker Punch** Skill in the previous round. At the beginning of her turn,\nin this new round, her Stealth faded away, but she will still remain hidden until\nshe tries to surprise another Character (which could lead her to cause Double\nDamage) or finishes her current turn (so, she would need to cast another Stealth\neffect if she wanted to continue in Stealth to escape the Monsters attacks).*\n"
+    },
+    {
+      "id": "status",
+      "keyword": "STATUS",
+      "description": "Status is a reward related to a choice a character made during the\nstory. Some Statuses can give special abilities as if they were some kind of blessing,\nwhile others are just related to the story. Regardless, a character can have any\nnumber of Statuses noted on their Campaign Log and all Statuses are erased during\nthe next Camp Phase.\n"
+    },
+    {
+      "id": "stealth",
+      "keyword": "STEALTH",
+      "description": "STEALTH is a Buffer Condition. When a Character receives STEALTH, they take the appropriate token and \nplace it on their board. While they have it, Monsters that are not Immune to STEALTH do not target that Hero, \nbut are also not subject to Combat Engagement caused by them. At the start of that Character’s next turn, they discard \nthe STEALTH token, ending the Condition. Alternatively, if that Hero makes a \n<img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\"> while still holding the token, they discard \nit early—but if that <img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\"> hits, it becomes a Critical Hit. \nMonsters Immune to STEALTH are also immune to this “Exploiting Attack.”\n"
+    },
+    {
+      "id": "strike-x",
+      "keyword": "STRIKE X",
+      "description": "Targets all characters in X AREAS within Range. Melee must be AREAS\nadjacent to own SQUARE.\n"
+    },
+    {
+      "id": "strongest-hero",
+      "keyword": "STRONGEST HERO",
+      "description": "The Hero with the most Health at the moment. Monsters often target\nthe Strongest Hero. If two Heroes are tied with the most Health, the Strongest\none among then will be the one who occupies the fastest Initiative Slot.\n"
+    },
+    {
+      "id": "stun",
+      "keyword": "STUN",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/stun.png",
+      "description": "STUN is a Debilitating Condition that functions differently for Monsters and Heroes. When a Character suffers \nSTUN, they take the appropriate token and place it on their board. At the start of their next turn they discard the STUN token. \nIf the Character is a Monster, they do not attack that turn (they may still move as normal). \nIf the Character is a Hero, they may take 1 less Cube Action that turn. STUN is a Redundant Condition (only 1 instance at a time). \n"
+    },
+    {
+      "id": "sturdiness",
+      "keyword": "STURDINESS",
+      "description": "Damage exceeding this number defeats the Character.\n"
+    },
+    {
+      "id": "suffer",
+      "keyword": "SUFFER",
+      "description": "Suffer is not properly a Keyword, however, it is a term that is worth\nclarifying. Suffer is used to define something that “hits” a Character after they\nhave tried to protect themselves against it. So, “suffer damage” means to lose\nHealth due to damage after you tried (if you could, naturally) to mitigate it\nthrough Prevent, Shield tokens, and so on.\n"
+    },
+    {
+      "id": "surge",
+      "keyword": "SURGE",
+      "description": "When you Attack, if the D20 roll results in a Natural 16 or higher, the described effect is triggered. \nApply this effect before Damage is dealt to the target. “Natural” refers to the value rolled on the D20, \nignoring any bonuses or penalties.\n"
+    },
+    {
+      "id": "swap",
+      "keyword": "SWAP",
+      "description": "When two models SWAP, they exchange their positions on the board. Models swapped in this way “step into” their new positions.\n"
+    },
+    {
+      "id": "swarm",
+      "keyword": "SWARM",
+      "description": "Swarm Monsters are tiny creatures that, joined together, form a single\nbeing, and thus they have no vital points in their body. Such creatures suffer\nonly half damage (rounded up, after Prevent reductions have been applied) of all\nWeapon Attack that hit them. **Example:** *If Lorelai has 2 Intimidate\ntokens when she attacks a Monster that has Swarm and 1 Shield token using a 6-damage\nattack, that Monster would suffer only 2 points of damage in the end (6 - 2 -\n1 = 3; 3 ÷ 2 = 1.5, which is then rounded up to 2).*\n"
+    },
+    {
+      "id": "take",
+      "keyword": "TAKE",
+      "description": "\"Take\" is used to describe something that is given to a Character. Whenever\nthat is damage, they have the opportunity to mitigate it through Shield tokens\nor Prevent effects (unless, of course, the damage is non-preventable). If it is\na Condition (such as Bleed) or an Effect (such as Telekinesis), that Character\ncan’t use Reactions or Interrupts to avoid it, but if they are Immune to the said\neffects, they simply won't take them. Taking a Curse Cube, on the other hand,\nis different from suffering Curse and thus, this effect can't be avoided even\nif the Character is Immune to Curse.\n"
+    },
+    {
+      "id": "telekinesis-x",
+      "keyword": "TELEKINESIS X",
+      "description": "Move any small-sized object (including small Darkness tiles) or SOLID\nOBJECTS (except Interactions) up to X SQUARES. Target is affected by harmful terrain\nor Darkness landed on including FALLING DAMAGE.\n"
+    },
+    {
+      "id": "threat",
+      "keyword": "THREAT",
+      "description": "Threat is the term used to define the moment when a Hero can have their\nHealth points reduced by some attack or effect, but is able to defend themselves\nand try to prevent this from happening. Thus, Threat essentially defines\nwhen a Hero can use a Reaction in-game. As a rule, Heroes can use such Skills or\nAbilities whenever a Hero (either themselves or an ally) is threatened, that is,\nwhen they take preventable damage (non-preventable damage never generates a Threat).Take\nnote that Threat is just a term, it doesn't change any rules. Therefore, Reactions\nwith “SELF” can only be used if the casting Character is also being threatened\nand so on, as described on page 14 of the Corebox Rulebook.\n"
+    },
+    {
+      "id": "throw-(bookshelf)",
+      "keyword": "THROW (BOOKSHELF)",
+      "description": "\"Bookshelves are too heavy to be thrown at a Character with a Minor\nAction. Instead, it is simply knocked over, affecting a Character that is adjacent\nto it (chosen by the Hero who used the Throw Furniture Minor Action). TELEKINESIS,\non the other hand, can throw a bookshelf normally. - Regardless of the\nway it was thrown, a bookshelf deals 2 DMG and inflicts STUN to its target (Don’t\nforget: Thrown Furniture is always broken and removed from the board.)\"\n"
+    },
+    {
+      "id": "throw-(chest)",
+      "keyword": "THROW (CHEST)",
+      "description": "\"When thrown at a Character, a Chest causes 2 DMG and you must roll\nthe Trap Die: add the result to this damage as a side effect. *(Don't forget,\nthrown Furniture is broken and removed from the board.)*\"\n"
+    },
+    {
+      "id": "throw-(piles-of-crates)",
+      "keyword": "THROW (PILE OF CRATES)",
+      "description": "When thrown, the Pile of Crate inflicts BRITTLE to its target if it\nis a Small Character. - Large Monsters bodies are so powerful that the\ncrates don't even bother them. (Don't forget, thrown Furniture is broken and removed\nfrom the board.)\n"
+    },
+    {
+      "id": "throw-(stack-of-barrels)",
+      "keyword": "THROW (STACK OF BARRELS)",
+      "description": "When thrown at a Character, a barrel deals 2 DMG and inflicts KNOCK\nDOWN to its target if it is a Small Character. Large Monsters bodies are so powerful\nthat barrels don't even bother them. - However, if a Hero was hidden\ninside the barrel, the throwing causes +2 DMG and it can even target Large Monsters\nand inflict KNOCK DOWN to them (overcoming their immunity thanks to the extra\nweight). - Reposition the Hero that was in the barrel in a square of their\nchoice that is adjacent to the target against which the barrel was thrown. *(Don't\nforget, thrown Furniture is broken and removed from the board).*\n"
+    },
+    {
+      "id": "throw-(stone-fountains)",
+      "keyword": "THROW (STONE FOUNTAIN)",
+      "description": "Stone Fountains are attached to the ground and therefore cannot be\nthrown at other Characters in any way *(but they can still be destroyed by Large\nMonsters who end their movement by stepping on them).*\n"
+    },
+    {
+      "id": "throw-(stone-pillar)",
+      "keyword": "THROW (STONE PILLAR)",
+      "description": "Stone Pillars are attached to the floor and ceiling and therefore cannot\nbe thrown at other characters in any way. However, it is precisely because they\nare so firm that the opposite becomes true:- When a Character is thrown\nagainst a stone pillar (by effects like TELEKINESIS or PUSH), they suffer 4 non-preventable\ndamage and are repositioned in a square adjacent to the pillar chosen by the Character\nwho threw them. The pillar is not removed from the board.\n"
+    },
+    {
+      "id": "trample-x",
+      "keyword": "TRAMPLE X",
+      "description": "TRAMPLE is an enhancement to the MOVE effect. Movements using TRAMPLE may pass through \n(but not stop on) squares occupied by Enemies. Additionally, when a TRAMPLING Character passes \nthrough an Enemy this way, it deals the listed damage to that Character. Each Enemy can only take \nTRAMPLE damage once per movement.\n"
+    },
+    {
+      "id": "trap",
+      "keyword": "TRAP",
+      "description": "Place a Trap token in the center of an area that is adjacent to your\narea (blue square). The first time an enemy activates within that area or moves\ninto that area, the Trap is triggered. All enemies inside that area are affected\nby the Trap, then remove the Trap token. There can only be 1 Trap token in an\narea at a time.\n"
+    },
+    {
+      "id": "trauma-cube-(tc)",
+      "keyword": "TRAUMA CUBE (TC)",
+      "description": "Purple cubes allocated to Hero or Dungeon Role skill slots, blocking their use. A Hero receives 1 Trauma Cube (TC) whenever their Health Points are reduced to 0 (Knocked Out) or from a specific Knock Out / Trauma effect. The Trauma Cube must be allocated to an available Hero or Role skill slot. Upon receiving a 2nd Trauma Cube, the Hero is killed and the Adventure ends in failure. (Page 15 of Age of Darkness Rulebook)"
+    },
+    {
+      "id": "trick-or-treat",
+      "keyword": "TRICK OR TREAT",
+      "description": "Tharmagar's controller chooses RANGE 1, HEAL 2 or RANGE 1, (BLEED 2\nor BURN 2 or POISON 2).\n"
+    },
+    {
+      "id": "turn",
+      "keyword": "TURN",
+      "description": "Turn is the term used to designate the time window in which a Character\nor a card on the Initiative Track may act. Even though a Monster type has only\none card in the Initiative Track to represent all units of that type, each Monster’s\nturn is taken individually. Therefore, the turn of a Shadow Knight with a pink\nsnap-on base is different from the turn of a Shadow Knight with the green snap-on\nbase. This distinction is important, because effects that can be used once per\nturn can be used once during the turn of each of these Shadow Knights, for example.\n"
+    },
+    {
+      "id": "two-handed",
+      "keyword": "TWO-HANDED",
+      "description": "Weapons that require both Hands to be wielded have this property. Heroes cannot equip Off-Hand Tools \nwhile wielding these Weapons. Additionally, whenever they receive an effect that instructs them to \nperform a <img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\">, those Heroes may only \nperform one <img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\"> from that effect (e.g., Twin Strike). \nHeroes wielding Two-Handed Weapons can still perform more than one \n<img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\"> per turn, as long as they are from separate Actions. \nWhenever a Hero equips a Two-Handed Weapon, they must store any Off-Hand Tool they were holding in their bag. \nIf their bag is full, they must choose 1 item to discard without applying its effects.\n"
+    },
+    {
+      "id": "unavailable",
+      "keyword": "UNAVAILABLE",
+      "description": "This is a game term usually associated with Interactions. When an effect\nstates that a Resolution becomes unavailable, it means that Heroes cannot choose\nthat Resolution anymore. Whenever a Hero chooses a Resolution from a Charged Interaction,\nfor example, it becomes unavailable and cannot be chosen again during this Adventure.\n"
+    },
+    {
+      "id": "unique",
+      "keyword": "UNIQUE",
+      "description": "This pet can only be summoned a specific skill. Otherwise, once summoned,\npet-activation skills can be used.\n"
+    },
+    {
+      "id": "unlife",
+      "keyword": "UNLIFE",
+      "description": "Pets with this trait have a lying life, needing necrotic power to stay\nupright. At the beginning of their master’s turn, they will be dismissed. At this\npoint, the Necromancer may choose to take a Curse Cube to extend the Unlife of\nsuch a Pet for one turn—This is called “Taint”. They may choose for each Pet with\nthis trait whether or not to do so, paying the Taint cost for each one individually.\n"
+    },
+    {
+      "id": "versatile",
+      "keyword": "VERSATILE",
+      "description": "Equipment with this property can be wielded in two different ways. When the Hero equips one of these cards, \nthey choose one of its sides—Front or Back—to use. From then on, as a Minor Action on their turn, \nthey may choose to flip the card to the other side. \n"
+    },
+    {
+      "id": "vicious",
+      "keyword": "VICIOUS",
+      "description": "The damage dealt by this Monster's attack is non-preventable.\n"
+    },
+    {
+      "id": "volatile",
+      "keyword": "VOLATILE",
+      "description": "Monsters with this ability have a knack for accelerating chain reactions. When this Monster activates, \nbefore it Moves and Attacks, trigger every Persistent Damage Condition affecting each Hero within Range 1 of that Monster.\n"
+    },
+    {
+      "id": "voodoo",
+      "keyword": "VOODOO",
+      "description": "When a Monster has this ability, it is able to remove its STACKABLE\nConditions by inflicting them back against the Heroes. Thus, at the beginning\nof these Monsters turn, when they are to be affected by STACKABLE Conditions *(Burn,\nBleed, and Intimidate are examples of STACKABLE Conditions)*, if any of its enemies\n(Hero, Pet, Companion etc.) are within Range 1 of that Monster, instead of it\nundergoing such effects, move them to the strongest enemy among them. If the Monster\ncannot redirect such tokens, only then does it suffers such effects.\n"
+    },
+    {
+      "id": "war-cry",
+      "keyword": "WAR CRY",
+      "description": "War Cry is a triggered ability that some Monsters possess. When activated, each other Monster within Range 1 of this Monster enrages and gains a +1 DMG token permanently (place this token on their Monster Status board).\n"
+    },
+    {
+      "id": "warden-(trait)",
+      "keyword": "WARDEN (TRAIT)",
+      "description": "Characters who have the Warden trait can use Interrupts and Reactions\nwith the Keyword “SELF” on other Characters as long as they are adjacent to them.\nAlso, Wardens can use such Skills when Characters adjacent to them are attacked\nor threatened (if the Skill you are using is either an Interrupt or a Reaction,\nrespectively) instead of using them only when they are attacked or threatened\nthemselves.\n"
+    },
+    {
+      "id": "warlock-(trait)",
+      "keyword": "WARLOCK (TRAIT)",
+      "description": "Bargaining with the Darkness, Warlocks flirt with corruption in exchange\nfor power. As long as the Otherwordly Pact Skill is not blocked, they receive\ntheir Curse Cubes as if they were Action Cubes, and when they spend them, these\nare treated as Wild Cubes. Once spent, these cubes become conventional Curse Cubes\nagain, and are removed only through Cleanse effects.\n"
+    },
+    {
+      "id": "weakest-hero",
+      "keyword": "WEAKEST HERO",
+      "description": "The Hero with the least Health at the moment is the Weakest Hero. If\ntwo Heroes are tied with the lowest Health, the weakest one among them will be\nthe one who occupies the slowest Initiative slot.\n"
+    },
+    {
+      "id": "weapon-attack",
+      "keyword": "WEAPON ATTACK",
+      "description": "The Hero must make an Accuracy Test by rolling a D20 and adding their To Hit bonuses. Add the bonuses granted \nby the <img src=\"/icons/2-melee-dmg.svg\" class=\"inline-icon\" alt=\"Melee Damage\"> instruction to any passive \nbonuses from Equipment, Hero Skills, and Class Abilities they have. If the roll equals or exceeds the Weapon’s \nAccuracy value (blue diamond), the attack hits and deals damage, including any applicable damage bonuses. \nIf the roll is a natural 20, it’s a Critical Hit—double the attack’s damage. If it’s a natural 1, it’s a Critical \nMiss—the attack fails regardless of bonuses. Heroes who are not wielding a Weapon cannot make Weapon Attacks.\nIf an effect instructs you to make two or more Attacks, resolve them one at a time, choosing each target as you\nmake that specific Attack.\n"
+    },
+    {
+      "id": "wild-copy",
+      "keyword": "WILD COPY",
+      "description": "An effect that Wild Copies a Skill applies the same effects as a Copy, but it doubles all the numbers\nCopies a Skill applies the same effects as a Copy, but it doubles all the numbers\nwritten in its numerical form, as would have happened if those effects had been\ncast by spending a Wild Cube.\n"
+    },
+    {
+      "id": "wild-cube",
+      "keyword": "WILD CUBE",
+      "description": "Considered to be any color AC. Hero Skill (not Dungeon Roles or Equipment)\neffects are doubled including conditions.\n"
+    },
+    {
+      "id": "windwalker-trait",
+      "keyword": "WINDWALKER (TRAIT)",
+      "description": "Your body is accelerated and your legs restless. The first MOVE effect you receive each turn gains a +3 bonus and you may also take an additional Cube Action each turn.\n"
+    },
+    {
+      "id": "wounded",
+      "keyword": "WOUNDED",
+      "description": "Wounded is a health state that Characters can be in. Characters who have half or less (rounded down) \nof their maximum Health Points are considered Wounded. Some abilities interact with Characters under these conditions.\n"
+    },
+    {
+      "id": "x",
+      "keyword": "X",
+      "description": "Any variable 'X' on a Monster or Attack card means the number of Rune\ntokens on the Initiative Track that matches that Attack's Rune.\n"
+    },
+    {
+      "id": "x-dmg",
+      "keyword": "+X or -X DMG",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/%2B1dmg.png",
+      "description": "X value is added to or subtracted from the Damage your Attack inflicts.\nCritical Hits and DOUBLE DMG also double this.\n"
+    },
+    {
+      "id": "x-hit",
+      "keyword": "+X or -X HIT",
+      "description": "Make a Weapon Attack adding (or subtracting) the X value to your die\nroll. Only affects Accuracy, not getting a Critical Hit.\n"
+    },
+    {
+      "id": "x-hp",
+      "keyword": "+X HP",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/%2B30health.png",
+      "description": "The Hero's Maximum Health increases by +X points. As explained on page\n7 of the Age of Darkness Rulebook, a Hero's Maximum Health, however, can never\nexceed 16. If a Hero has two or more effects that increase their Health Points,\nyou should always add them up, but never exceed the value of 16 shown on the Hero\nboard. All Maximum Health that exceeds 16 is considered wasted.\n"
+    },
+    {
+      "id": "x-hp-(simple)",
+      "keyword": "+X HP (SIMPLE)",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/%2B30health.png",
+      "description": "If you prefer not to deal with the granularity of the +X HP rule, you\ncan choose the simple version and disregard the second and third NOTEs. So, if\nyou lose an effect that confers +X HP, you lose Health accordingly. However, if\nyou regain these effects later, you won't recover any Health, even if the sum\nof the +X HP effects you have exceeds 16 Health.\n"
+    },
+    {
+      "id": "x-movement",
+      "keyword": "+X MOVEMENT",
+      "icon": "https://s3.us-east-2.amazonaws.com/assets.drunagor.app/CampaignTracker/Keywords/%2B1mov.png",
+      "description": "You received X additional movement points for every Move effect gained."
+    },
+    {
+      "id": "knocked-out",
+      "keyword": "KNOCKED OUT",
+      "description": "A Hero is Knocked Out when their Health Points (HP) reach 0 (or from a Knock Out effect). When a Hero is Knocked Out: 1. The Hero immediately receives 1 Trauma Cube (TC), which must be allocated to an available Hero or Dungeon Role skill slot, blocking that skill. 2. The Hero regains breath and recovers Health. 3. If a Hero receives a 2nd Trauma Cube, the Hero is killed and the Adventure ends in failure. (Page 15 of Age of Darkness Rulebook)"
+    }
+  ]
+}
