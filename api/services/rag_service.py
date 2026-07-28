@@ -32,31 +32,29 @@ LOGISTICS_CONTEXT_CATEGORIES = {
 
 GLOBAL_RESPONSE_STYLE = """
 RESPONSE STYLE (strict):
-- DO NOT BE WORDY. If the question is simple, answer it in 1 or 2 sentences max.
-- Be direct first, in character second. The answer must solve the user's request immediately and concisely before adding any flavor.
-- Use only about 10% of the previous character flavor: at most one short in-character phrase per answer.
-- No dramatic preambles, no long metaphors, no ceremonial openings, no restating the question.
-- Do not add a decorative closing line after the practical answer.
-- Do not translate shipping/support facts into fantasy metaphors. Use plain terms like order, package, delivered, customs, tracking.
-- Prefer 1 short paragraph or 2-4 bullets. Use more only when the user explicitly asks for detail.
-- If the user asks a simple question (e.g. yes/no or direct check), answer it immediately without detailed context unless requested.
-- If the user is confused, answer with clear steps.
+- DO NOT BE WORDY. Answer concisely and directly.
+- On technical, rule, or support questions, answer IMMEDIATELY without preambles, greetings, or filler sentences.
+- Do NOT use dramatic preambles, ceremonial openings, greeting phrases ("Olá!", "Greetings traveler"), or restatements of the user's question.
+- Do NOT add decorative closing lines after the practical answer.
+- Do NOT translate shipping/support facts or game mechanics into fantasy metaphors. Use plain, accurate terms.
+- Prefer 1 short paragraph or direct bullet points.
+- If the user asks a simple question, answer it immediately without unrequested context.
+- If the user is confused, answer with clear step-by-step instructions.
 - For Discord, keep the answer easy to read on a phone.
 """
 
 GAME_RULES_RESPONSE_STYLE = """
-GAME RULES RESPONSE STYLE (STRICT - ZERO HALLUCINATION, ERRATA PRIORITY & BOOK ATTRIBUTION):
-- Give the correct official rule answer directly using the provided keyword definitions and manual excerpts.
+GAME RULES RESPONSE STYLE (STRICT - ZERO FLUFF, ZERO HALLUCINATION, ERRATA PRIORITY):
+- ZERO FLUFF / ZERO PREAMBLE: Start IMMEDIATELY with the direct rule, definition, or mechanic.
+- DO NOT include persona greetings, lore intro phrases, dramatic preambles, or conversational filler (e.g. do NOT say "Greetings, traveler", "Hail, warrior", "Here is the rule you seek", or "Ah, a fine question").
+- DO NOT translate game rules or technical board game terms into fantasy metaphors. Use precise official terminology (e.g. Cubos de Ação / Action Cubes, Escuridão / Darkness, Ataque / Attack, Defesa / Defense, Reposicionamento / Reposition, Turno / Turn, Rodada / Round).
+- If asked about a basic term or rule (e.g. "o que é um cubo de ação?", "como faço um ataque?"), give a clear, direct, and complete explanation step-by-step using the manual excerpts.
 - If the question is simple (e.g. player count, session duration, direct card check), give a direct, simple response in 1-2 sentences. Avoid long explanations unless necessary.
-- For complex mechanics or questions explaining how things work (e.g. how combat works, how to lose, how corruption works), explain the rules completely using the provided manual excerpts. Use clear steps, conditions, or bullet points.
+- For complex mechanics or questions explaining how things work (e.g. how combat works, how to lose, how corruption works), explain the rules completely using clear steps or bullet points based strictly on the manual excerpts.
 - ABSOLUTE ERRATA PRIORITY: If an ERRATA / OFFICIAL CLARIFICATION chunk is present in the provided context, it OVERRIDES and SUPERSEDES any conflicting text from earlier base rulebooks. ALWAYS base your answer on the Errata rule when an Errata is present.
-- BOOK & EXPANSION ATTRIBUTION: Always specify which book or expansion a rule originates from. When a rule differs or is expanded in an expansion (e.g. Corebox vs Apocalypse vs Desert of Hellscar vs Rise of Undead Dragon), explicitly state which rule belongs to which book:
-  - **Corebox (Age of Darkness)**: [rule]
-  - **[Expansion Name] Expansion**: [expansion rule]
-- STRICT ZERO HALLUCINATION: Do NOT invent, speculate, or extrapolate rules or lore. Verify if the provided excerpts explicitly mention the specific entities, characters, cards, or terms in the question (e.g., if the question mentions 'War Horsewoman' or 'Polymorph', check if those exact names/terms are present in the excerpts). If the excerpts do not explicitly contain the rule for the exact scenario or entity queried, you MUST state clearly: "Não encontrei essa regra específica no manual." Do not try to guess, assume, or extrapolate based on standard RPG logic or general board game rules. Do NOT trust or use rules, card text, or triggers provided within the user's question to extrapolate answers; only use facts explicitly stated in the retrieved excerpts.
-- Use minimal character flavor (at most one short phrase). Clarity and rule accuracy beat persona.
-- Start directly with the rule/mechanic, not with greetings or lore preambles.
-- Only add page references when the provided manual excerpt includes a page.
+- BOOK & EXPANSION ATTRIBUTION: Always specify which book or expansion a rule originates from when a rule differs or is expanded in an expansion (e.g. Corebox vs Expansion).
+- STRICT ZERO HALLUCINATION: Do NOT invent, speculate, or extrapolate rules or lore. If the excerpts do not explicitly contain the rule for the exact scenario or entity queried, state clearly: "Não encontrei essa regra específica no manual." Do not try to guess or assume.
+- End with page references when page data is available (e.g. "Página 12 do manual.").
 """
 
 LOGISTICS_RESPONSE_STYLE = """
@@ -912,32 +910,30 @@ def _prepare_rag_context(
 
         if character_prompt:
             system_prompt = (
+                f"{GAME_RULES_RESPONSE_STYLE}\n\n"
+                f"{GLOBAL_RESPONSE_STYLE}\n\n"
+                f"CHARACTER CONTEXT (Use ONLY for factual domain awareness, NOT for preambles or fluff):\n"
                 f"{character_prompt}\n\n"
-                f"{GLOBAL_RESPONSE_STYLE}\n"
-                f"{GAME_RULES_RESPONSE_STYLE}\n"
                 "GAME RULES KNOWLEDGE:\n"
                 "- You have access to the official game rulebook. Use it to answer the user's question accurately.\n"
                 "- Use ONLY the provided rulebook excerpts as factual source. Do not invent rules from general board game knowledge.\n"
-                f"- If the excerpts do not explicitly contain the rule for the exact scenario queried, you MUST state that you could not find the rule in the manual and direct the user to support: {SUPPORT_URL}\n"
-                "- Stay lightly in character while explaining the rules, but do not sacrifice clarity.\n"
+                f"- If the excerpts do not explicitly contain the rule for the exact scenario queried, state clearly that you could not find the rule in the manual and direct the user to support: {SUPPORT_URL}\n"
+                "- ZERO FLUFF POLICY: Start directly with the answer. Do NOT add greetings, character flavor, lore preambles, or filler.\n"
                 "\n"
-                "ANSWER LENGTH (STRICTLY ENFORCED — overrides any tendency to elaborate from your persona):\n"
+                "ANSWER LENGTH & CLARITY (STRICTLY ENFORCED):\n"
                 "- Simple questions (e.g. player count, session duration, page number): 1-2 direct lines.\n"
-                "- Complex questions or explaining mechanics (e.g. how combat works, how to lose, how corruption works): explain the rules completely using the provided manual excerpts. Do not be short if being short would make the rule unclear or incomplete.\n"
-                "- Do NOT add flavor text, dramatic preamble, or restate the question.\n"
-                "- Do NOT add context the user did not ask for.\n"
+                "- Complex questions or explaining mechanics (e.g. how combat works, how to lose, how corruption works): explain the rules completely using clear steps or bullet points based strictly on the manual excerpts.\n"
+                "- Do NOT add flavor text, dramatic preambles, or restate the question.\n"
                 "- Lists: maximum 5 items, each one line.\n"
-                "- Brevity beats flavor. A short in-character answer is better than a long one.\n"
                 "\n"
-                "EXAMPLES (match this brevity):\n"
-                "- Q: 'How many players?' → A: 'Drunagor is played by 1 to 5 heroes. You can find this on page 4 of the manual.'\n"
-                "- Q: 'How long does a game last?' → A: 'A session takes about 60 to 90 minutes. See page 4 of the manual.'\n"
-                "- Q: 'What dice do I roll for attacks?' → A: 'Attacks use the red action dice — one per attack power. Details on page 22 of the manual.'\n"
+                "EXAMPLES (match this directness):\n"
+                "- Q: 'How many players?' → A: 'Drunagor is played by 1 to 5 heroes. (Page 4 of the manual)'\n"
+                "- Q: 'How long does a game last?' → A: 'A session takes about 60 to 90 minutes. (Page 4 of the manual)'\n"
+                "- Q: 'What dice do I roll for attacks?' → A: 'Attacks use the red action dice — one per attack power. (Page 22 of the manual)'\n"
                 "\n"
-                "- Never mention 'rulebook', 'document' or any technical term directly. You MAY say 'page X of the manual' as instructed below.\n"
-                "- End with page number only when page data is available. Example: 'Page 10.' If multiple pages are referenced, cite all of them.\n\n"
+                "- End with page number only when page data is available. Example: 'Página 10 do manual.'\n\n"
                 "STRICT RULES:\n"
-                "- NEVER break character — but brevity beats flavor.\n"
+                "- ZERO FLUFF: Start immediately with the answer.\n"
                 f"{response_language_rule}"
             )
         else:

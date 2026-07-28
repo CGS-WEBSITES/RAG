@@ -192,7 +192,7 @@ def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dic
             LIMIT %s
         )
         SELECT * FROM ranked
-        WHERE distance <= 0.80
+        WHERE distance <= 0.85
         ORDER BY distance
     """
     with get_cursor() as cur:
@@ -202,7 +202,7 @@ def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dic
         if len(rows) < limit:
             terms = [
                 term
-                for term in re.findall(r"[A-Za-zÀ-ÿ0-9-]{4,}", query.lower())
+                for term in re.findall(r"[A-Za-zÀ-ÿ0-9-]{3,}", query.lower())
                 if term not in {"como", "faco", "faço", "para", "sobre", "qual", "quais", "what", "which", "with", "that", "this", "does"}
             ]
             if terms:
@@ -214,14 +214,29 @@ def search_manual_segments(query: str, project: str, limit: int = 5) -> list[dic
                     "defesa": ["defense"],
                     "dado": ["dice", "die"],
                     "dados": ["dice"],
-                    "cubo": ["cube"],
-                    "cubos": ["cube"],
+                    "cubo": ["cube", "action cube"],
+                    "cubos": ["cube", "action cubes"],
                     "amarelo": ["yellow"],
                     "vermelho": ["red"],
                     "azul": ["blue"],
                     "verde": ["green"],
                     "contra-ataque": ["counterattack", "counter", "fumble"],
                     "contra": ["counterattack", "counter", "fumble"],
+                    "escuridao": ["darkness"],
+                    "escuridão": ["darkness"],
+                    "habilidade": ["ability", "skill"],
+                    "habilidades": ["abilities", "skills"],
+                    "monstro": ["monster"],
+                    "monstros": ["monsters"],
+                    "iniciativa": ["initiative"],
+                    "turno": ["turn"],
+                    "turnos": ["turns"],
+                    "rodada": ["round"],
+                    "rodadas": ["rounds"],
+                    "corrupcao": ["corruption"],
+                    "corrupção": ["corruption"],
+                    "reposicionamento": ["reposition"],
+                    "fumble": ["fumble"],
                 }
                 expanded_terms = []
                 for term in terms:
@@ -316,7 +331,40 @@ def search_keywords(query: str, project: str = "Drunagor", limit: int = 3) -> li
     limit = max(1, min(int(limit), 10))
     clean_query = query.strip().lower()
 
-    # Direct / substring matching on keyword name
+    # Extract terms & build expansions for exact keyword matching
+    terms = [
+        term
+        for term in re.findall(r"[A-Za-zÀ-ÿ0-9-]{3,}", clean_query)
+        if term not in {"como", "faco", "faço", "para", "sobre", "qual", "quais", "what", "which", "with", "that", "this", "does", "the"}
+    ]
+    expansions = {
+        "ataque": ["attack"],
+        "atacar": ["attack"],
+        "dano": ["damage"],
+        "defesa": ["defense"],
+        "dado": ["dice", "die"],
+        "dados": ["dice"],
+        "cubo": ["cube", "action cube"],
+        "cubos": ["cube", "action cubes"],
+        "escuridao": ["darkness"],
+        "escuridão": ["darkness"],
+        "habilidade": ["ability", "skill"],
+        "habilidades": ["abilities", "skills"],
+        "monstro": ["monster"],
+        "iniciativa": ["initiative"],
+        "turno": ["turn"],
+        "rodada": ["round"],
+        "corrupcao": ["corruption"],
+        "corrupção": ["corruption"],
+        "contra-ataque": ["counterattack", "counter attack"],
+        "reposicionamento": ["reposition"],
+    }
+    search_candidates = [clean_query]
+    for t in terms:
+        search_candidates.append(t)
+        search_candidates.extend(expansions.get(t, []))
+    search_candidates = list(dict.fromkeys(search_candidates))
+
     exact_sql = """
         SELECT
             k.id,
@@ -325,18 +373,23 @@ def search_keywords(query: str, project: str = "Drunagor", limit: int = 3) -> li
             k.icon,
             0.0 AS distance
         FROM public.keywords k
-        WHERE LOWER(k.keyword) = %s
-           OR LOWER(k.id) = %s
-           OR LOWER(k.keyword) LIKE %s
+        WHERE (k.project IS NULL OR k.project = %s)
+          AND (
+            LOWER(k.keyword) = ANY(%s)
+            OR LOWER(k.id) = ANY(%s)
+            OR EXISTS (
+                SELECT 1 FROM unnest(%s::text[]) term 
+                WHERE LOWER(k.keyword) LIKE '%%' || term || '%%'
+            )
+          )
         ORDER BY LENGTH(k.keyword) ASC
         LIMIT %s
     """
-    like_query = f"%{clean_query}%"
 
     rows = []
     seen_ids = set()
     with get_cursor() as cur:
-        cur.execute(exact_sql, (clean_query, clean_query, like_query, limit))
+        cur.execute(exact_sql, (project, search_candidates, search_candidates, search_candidates, limit))
         exact_rows = list(cur.fetchall())
 
         for r in exact_rows:
@@ -362,7 +415,7 @@ def search_keywords(query: str, project: str = "Drunagor", limit: int = 3) -> li
                         emb.embedding <=> (%s)::vector AS distance
                     FROM public.keywords_embedding_store emb
                     JOIN public.keywords k ON k.id = emb.id
-                    WHERE k.project = %s
+                    WHERE (k.project IS NULL OR k.project = %s)
                     ORDER BY distance
                     LIMIT %s
                 )
