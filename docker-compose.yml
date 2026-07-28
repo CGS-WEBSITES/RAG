@@ -61,6 +61,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - ./api:/app/api
+      - ./scripts:/app/scripts
     logging:
       driver: "json-file"
       options:
