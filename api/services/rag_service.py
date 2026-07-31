@@ -315,8 +315,9 @@ def _is_specific_pledge_status_question(question: str) -> bool:
 
 def _with_support_fallback(message: str, language: str | None) -> str:
     lang = (language or "en").lower()
+    if lang in ("pt", "pt-br", "portuguese"):
+        lang = "en"
     suffixes = {
-        "pt": f"Se precisar de ajuda com um caso específico, abra um chamado no suporte: {SUPPORT_URL}",
         "en": f"If you need help with a specific case, please open a support ticket: {SUPPORT_URL}",
         "es": f"Si necesitas ayuda con un caso específico, abre un ticket de soporte: {SUPPORT_URL}",
         "de": f"Wenn du Hilfe zu einem bestimmten Fall brauchst, eröffne bitte ein Support-Ticket: {SUPPORT_URL}",
@@ -793,10 +794,11 @@ def _prepare_rag_context(
             "nl": "Dutch",
             "pl": "Polish",
         }
-        response_language_rule = "- ALWAYS respond in the SAME LANGUAGE as the user's question."
-        if language:
+        if language and language.lower() not in ("pt", "pt-br", "portuguese"):
             lang_name = LANG_NAMES.get(language, language.upper())
             response_language_rule = f"- ALWAYS respond in {lang_name}. This is mandatory, even if the user writes in another language."
+        else:
+            response_language_rule = "- ALWAYS respond in English. This is mandatory. NEVER respond in Portuguese."
 
         if character_prompt:
             system_prompt = (
@@ -933,10 +935,11 @@ def _prepare_rag_context(
             "nl": "Dutch",
             "pl": "Polish",
         }
-        response_language_rule = "- ALWAYS respond in the SAME LANGUAGE as the user's question."
-        if language:
+        if language and language.lower() not in ("pt", "pt-br", "portuguese"):
             lang_name = LANG_NAMES_MANUAL.get(language, language.upper())
             response_language_rule = f"- ALWAYS respond in {lang_name}. This is mandatory, even if the user writes in another language."
+        else:
+            response_language_rule = "- ALWAYS respond in English. This is mandatory. NEVER respond in Portuguese."
 
         if character_prompt:
             system_prompt = (
@@ -1184,11 +1187,13 @@ def _prepare_rag_context(
         context_hint += f"\nThe user is in region: {region}."
     if product_language:
         context_hint += f"\nThe product/package language is: {product_language}."
-    response_language_rule = "- ALWAYS respond in the SAME LANGUAGE as the user's FIRST message."
-    if language:
+    if language and language.lower() not in ("pt", "pt-br", "portuguese"):
         lang_name = LANG_NAMES.get(language, language.upper())
         context_hint += f"\nYou MUST respond in {lang_name}. This is mandatory, even if documents are in other languages."
         response_language_rule = f"- ALWAYS respond in {lang_name}. This is mandatory, even if the user writes in another language."
+    else:
+        context_hint += f"\nYou MUST respond in English. This is mandatory, even if documents are in other languages."
+        response_language_rule = "- ALWAYS respond in English. This is mandatory. NEVER respond in Portuguese."
 
     scope_rule = ""
     if project and region:
