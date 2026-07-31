@@ -361,6 +361,24 @@ def _looks_like_game_rules_question(question: str) -> bool:
     text = (question or "").lower()
     if not text:
         return False
+
+    # If the question contains logistics-related terms, we shouldn't force it to game rules
+    logistics_terms = (
+        "logistica", "logística", "logistics",
+        "entrega", "entregas", "delivery", "deliveries", "entregar",
+        "envio", "envios", "shipping", "shipment", "shipments", "shipped", "enviar", "enviado",
+        "rastreamento", "rastreio", "tracking", "rastrear",
+        "pledge", "pedido", "pedidos", "order", "orders",
+        "atraso", "atrasos", "delay", "delays", "atrasado",
+        "reembolso", "reembolsos", "refund", "refunds",
+        "troca de endereco", "troca de endereço", "address change", "change address", "endereço", "endereco", "address",
+        "pagamento", "pagamentos", "payment", "payments",
+        "cancelamento", "cancelamentos", "cancel", "cancellation", "cancellations",
+        "porto", "port", "hubs", "hub", "warehouse", "transportadora", "carrier"
+    )
+    if any(term in text for term in logistics_terms):
+        return False
+
     if any(term in text for term in GAME_RULE_TERMS):
         return True
     if re.search(r"\b(d|dado|dice)\s*20\b", text):
@@ -402,16 +420,16 @@ def classify_question(question: str) -> str:
         f"Classify this customer support question into exactly ONE category.\n"
         f"Categories: {categories_str}\n\n"
         f"Category definitions:\n"
-        f"- game_rules: questions about how to play the game, game mechanics, rules, components, setup, gameplay, abilities, skills, monsters, dungeons, campaigns, characters, cards, tokens, dice. Examples: 'How does the Darkness work?', 'Como funciona a Escuridão?', 'What is a Berserker Spirit?', 'Quantos jogadores podem jogar?', 'How do I set up the game?', 'O que é uma Campanha?'\n"
-        f"- atraso_entrega: delayed orders or deliveries\n"
+        f"- game_rules: questions about how to play the game, game mechanics, rules, components, setup, gameplay, abilities, skills, monsters, dungeons, campaigns, characters, cards, tokens, dice. Do NOT classify shipping, delivery, logistics, or fulfillment queries here. Examples: 'How does the Darkness work?', 'Como funciona a Escuridão?', 'What is a Berserker Spirit?', 'Quantos jogadores podem jogar?'\n"
+        f"- atraso_entrega: delayed orders, deliveries, shipping rules, delivery rules, or general logistics rules (e.g., 'regras de envio', 'regras de entrega para o Brasil')\n"
         f"- reembolso: refund requests\n"
         f"- troca_endereco: address changes\n"
-        f"- status_pedido: order status inquiries\n"
+        f"- status_pedido: order status inquiries, general logistics/fulfillment updates, shipping status, carrier status, package tracking status (e.g. 'Qual a logística do Dante na Europa?', 'How is shipping status in USA?')\n"
         f"- duvida_produto: general product questions (NOT game rules)\n"
         f"- dano_defeito: damaged or defective items\n"
         f"- pagamento: payment issues\n"
         f"- cancelamento: order cancellations\n"
-        f"- rastreamento: shipment tracking\n"
+        f"- rastreamento: shipment tracking, tracking numbers\n"
         f"- chitchat: casual greetings, pleasantries, small talk, politeness, or simple conversational messages (e.g. 'Olá', 'Hello', 'Good morning', 'Tudo bem?', 'Como vai?', 'Obrigado', 'Who are you?', 'Quem é você?').\n"
         f"- outro: anything else\n\n"
         f"Question: {question}\n"
