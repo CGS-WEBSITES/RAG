@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 _RAG_CONCURRENCY_SEMAPHORE = threading.Semaphore(2)
 
 MAX_CHUNK_LENGTH = 500
-RELEVANCE_THRESHOLD = 0.58
+RELEVANCE_THRESHOLD = 0.68
 MAX_REFINEMENT_ROUNDS = 2
 SUPPORT_URL = "https://newaccount1620866477944.freshdesk.com/support/tickets/new"
 LOGISTICS_CONTEXT_CATEGORIES = {
