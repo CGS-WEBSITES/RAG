@@ -1635,19 +1635,19 @@ def generate_rag_stream(
     chat_id = ""
     try:
         chat_id = save_chat(
-                session_id=session_id,
-                question=question,
-                answer=answer,
-                category=category,
-                model=model,
-                provider=Config.LLM_PROVIDER,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-                sources_count=len(ctx["ticket_chunks"]) + len(ctx["logistics_chunks"]),
-                language=detected_language,
-            )
-        except Exception as e:
-            logger.warning("Failed to save chat history: %s", e)
+            session_id=session_id,
+            question=question,
+            answer=answer,
+            category=category,
+            model=model,
+            provider=Config.LLM_PROVIDER,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            sources_count=len(ctx["ticket_chunks"]) + len(ctx["logistics_chunks"]),
+            language=detected_language,
+        )
+    except Exception as e:
+        logger.warning("Failed to save chat history: %s", e)
 
     logger.info(
         "RAG stream completed: provider=%s, question='%s', category=%s, "
@@ -1904,18 +1904,18 @@ def generate_rag_response(
     chat_id = ""
     try:
         chat_id = save_chat(
-                session_id=session_id,
-                question=question,
-                answer=answer,
-                category=category,
-                model=model,
-                provider=Config.LLM_PROVIDER,
-                tokens_in=tokens_in,
-                tokens_out=tokens_out,
-                sources_count=len(ctx["ticket_chunks"]) + len(ctx["logistics_chunks"]),
-            )
-        except Exception as e:
-            logger.warning("Failed to save chat history: %s", e)
+            session_id=session_id,
+            question=question,
+            answer=answer,
+            category=category,
+            model=model,
+            provider=Config.LLM_PROVIDER,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
+            sources_count=len(ctx["ticket_chunks"]) + len(ctx["logistics_chunks"]),
+        )
+    except Exception as e:
+        logger.warning("Failed to save chat history: %s", e)
 
     return {
         "question": question,
