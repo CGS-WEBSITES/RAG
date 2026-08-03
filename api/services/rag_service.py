@@ -771,6 +771,7 @@ def _sanitize_text(text: str) -> str:
 def _prepare_rag_context(
     question: str,
     max_chunks: int = 5,
+    session_id: str | None = None,
     project: str | None = None,
     region: str | None = None,
     product_language: str | None = None,
@@ -1549,6 +1550,7 @@ def generate_rag_stream(
             _prepare_rag_context,
             question=enhanced_query,
             max_chunks=max_chunks,
+            session_id=session_id,
             project=_project,
             region=_region,
             product_language=_product_language,
@@ -1835,6 +1837,7 @@ def generate_rag_response(
     ctx = _prepare_rag_context(
         enhanced_query,
         max_chunks,
+        session_id=session_id,
         project=_project,
         region=_region,
         product_language=_product_language,
