@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Generator
@@ -776,6 +777,7 @@ def _prepare_rag_context(
     category: str | None = None,
     language: str | None = None,
 ) -> dict:
+    session_id = session_id.strip() if session_id else str(uuid.uuid4())
     model = Config.get_llm_model()
 
     if category == "chitchat":
@@ -1631,9 +1633,8 @@ def generate_rag_stream(
 
     answer = "".join(full_answer)
     chat_id = ""
-    if session_id:
-        try:
-            chat_id = save_chat(
+    try:
+        chat_id = save_chat(
                 session_id=session_id,
                 question=question,
                 answer=answer,
@@ -1901,9 +1902,8 @@ def generate_rag_response(
         raise RuntimeError(f"Error generating response via {Config.LLM_PROVIDER}: {e}")
 
     chat_id = ""
-    if session_id:
-        try:
-            chat_id = save_chat(
+    try:
+        chat_id = save_chat(
                 session_id=session_id,
                 question=question,
                 answer=answer,
