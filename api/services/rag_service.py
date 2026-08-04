@@ -329,6 +329,24 @@ def _with_support_fallback(message: str, language: str | None) -> str:
     return f"{message}\n\n{suffix}"
 
 
+def _clean_query_for_search(text: str) -> str:
+    if not text:
+        return ""
+    cleaned = re.sub(
+        r"\[(?:Language instruction|Context for assistant|Persona|Current Discord selections|Context)[^\]]*\]",
+        "",
+        text,
+        flags=re.IGNORECASE,
+    )
+    lines = [
+        line.strip()
+        for line in cleaned.splitlines()
+        if line.strip() and not line.strip().startswith("[")
+    ]
+    result = " ".join(lines).strip()
+    return result or text.strip()
+
+
 def _detect_project_from_text(text: str) -> str | None:
     normalized = (text or "").lower()
     for project, aliases in PROJECT_ALIASES.items():
@@ -835,11 +853,13 @@ def _prepare_rag_context(
             "category": category,
         }
 
+    search_query = _clean_query_for_search(question)
+
     # If game_rules category and project is set, search keywords first then manual segments
     if category == "game_rules" and project:
-        keyword_chunks = search_keywords(question, project=project, limit=3)
+        keyword_chunks = search_keywords(search_query, project=project, limit=3)
         manual_chunks = search_manual_segments(
-            question, project=project, limit=max_chunks
+            search_query, project=project, limit=max_chunks
         )
 
         # Sort Errata / Official Clarification chunks to the very top so Erratas override base rules
@@ -1014,7 +1034,7 @@ def _prepare_rag_context(
     if specific_pledge_status_question:
         ticket_chunks = []
     else:
-        ticket_chunks = semantic_search(question, limit=max_chunks, source="tickets")
+        ticket_chunks = semantic_search(search_query, limit=max_chunks, source="tickets")
         ticket_chunks = _filter_chunks(ticket_chunks)
 
     has_context = bool(project or region)
@@ -1029,7 +1049,7 @@ def _prepare_rag_context(
         else:
             logistics_limit = 3 if project or region else 1
             logistics_chunks = semantic_search(
-                question, limit=logistics_limit, source="logistics"
+                search_query, limit=logistics_limit, source="logistics"
             )
             logistics_chunks = _filter_chunks(logistics_chunks)
 
