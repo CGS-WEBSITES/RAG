@@ -1491,19 +1491,14 @@ def generate_rag_stream(
         missing_logistics = _missing_logistics_context(
             _project, _region, _product_language
         )
-        if category == "game_rules" or category == "chitchat" or category in LOGISTICS_CONTEXT_CATEGORIES or (
-            category not in LOGISTICS_CONTEXT_CATEGORIES and _region
-        ):
-            enhanced_query = question
-            logger.info(
-                "Fast path: category=%s, project=%s, region=%s, question=%s",
-                category,
-                _project,
-                _region,
-                question[:50],
-            )
-        else:
-            _project = None
+        enhanced_query = question
+        logger.info(
+            "Fast path: category=%s, project=%s, region=%s, question=%s",
+            category,
+            _project,
+            _region,
+            question[:50],
+        )
     else:
         category = None
 
@@ -1797,12 +1792,7 @@ def generate_rag_response(
         missing_logistics = _missing_logistics_context(
             _project, _region, _product_language
         )
-        if category == "game_rules" or category == "chitchat" or category in LOGISTICS_CONTEXT_CATEGORIES or (
-            category not in LOGISTICS_CONTEXT_CATEGORIES and _region
-        ):
-            enhanced_query = question
-        else:
-            _project = None
+        enhanced_query = question
     else:
         category = None
 

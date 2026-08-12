@@ -1,8 +1,17 @@
 # Ambiente virtual
 venv/
+.venv/
+debug_venv/
 
 # Variáveis de ambiente
 .env
+
+# Large files / media / books / seed sql
+books/
+extracted_images/
+*.pdf
+scripts/*.sql
+test_page1.png
 
 # Python
 __pycache__/
@@ -18,5 +27,6 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+*:Zone.Identifier
 
 deploy.sh

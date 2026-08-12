@@ -28,9 +28,16 @@ def create_app() -> Flask:
     app.config["TIMEOUT"] = 600
     CORS(
         app,
-        resources={r"/api/*": {"origins": "*"}},
+        resources={r"/*": {"origins": "*"}},
         supports_credentials=False,
     )
+
+    @app.after_request
+    def add_cors_headers(response):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS, PUT, DELETE"
+        return response
     api = Api(
         app,
         title="RAG API",
