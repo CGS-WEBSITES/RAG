@@ -125,6 +125,22 @@ class Me(Resource):
         return {"user": g.user, "base": store.overview(), "review": Config.REVIEW_LABEL}
 
 
+@ns.route("/pet")
+class Pet(Resource):
+    method_decorators = [team_only]
+
+    def get(self):
+        """Quintal da mascote desta conta."""
+        return {"data": store.get_pet(g.user)}
+
+    def put(self):
+        data = _body()
+        if len(json.dumps(data)) > 6000:
+            return {"message": "Grande demais"}, 400
+        store.set_pet(g.user, data)
+        return {"status": "ok"}
+
+
 @ns.route("/conversations")
 class Conversations(Resource):
     method_decorators = [team_only]

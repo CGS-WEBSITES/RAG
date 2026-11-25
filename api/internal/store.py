@@ -39,6 +39,21 @@ def set_state(key: str, value: str) -> None:
         )
 
 
+def get_pet(author: str) -> dict | None:
+    with get_cursor() as cur:
+        cur.execute("SELECT data FROM pet_state WHERE author = %s", (author,))
+        row = cur.fetchone()
+        return row["data"] if row else None
+
+
+def set_pet(author: str, data: dict) -> None:
+    with get_cursor() as cur:
+        cur.execute(
+            "INSERT INTO pet_state VALUES (%s, %s) ON CONFLICT (author) DO UPDATE SET data = EXCLUDED.data",
+            (author, Json(data)),
+        )
+
+
 def content_hash(*parts) -> str:
     return hashlib.sha256("\x1f".join(str(p) for p in parts).encode()).hexdigest()
 

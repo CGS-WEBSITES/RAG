@@ -43,6 +43,8 @@ ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS last_at TIMESTAMPTZ;
 ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS requester BIGINT;
 CREATE INDEX IF NOT EXISTS idx_support_tickets_requester ON support_tickets (requester);
 
+CREATE TABLE IF NOT EXISTS pet_state (author TEXT PRIMARY KEY, data JSONB NOT NULL);
+
 -- Resumos e traduções prontos, refeitos só quando o ticket muda.
 CREATE TABLE IF NOT EXISTS ticket_ai (
     id TEXT, kind TEXT, content_hash TEXT NOT NULL, data JSONB NOT NULL, PRIMARY KEY (id, kind)
