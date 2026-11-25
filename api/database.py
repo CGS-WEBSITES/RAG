@@ -10,13 +10,13 @@ from api.config import Config
 
 logger = logging.getLogger(__name__)
 
-_connection_pool: pool.SimpleConnectionPool | None = None
+_connection_pool: pool.ThreadedConnectionPool | None = None
 
 
 def init_pool(min_conn: int = 2, max_conn: int = 10) -> None:
     global _connection_pool
     try:
-        _connection_pool = pool.SimpleConnectionPool(
+        _connection_pool = pool.ThreadedConnectionPool(
             min_conn,
             max_conn,
             Config.get_db_dsn(),

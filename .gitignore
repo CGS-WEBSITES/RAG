@@ -13,6 +13,9 @@ extracted_images/
 scripts/*.sql
 test_page1.png
 
+# Cópias locais
+RAG-continuacao*.md
+
 # Python
 __pycache__/
 *.py[cod]
@@ -30,3 +33,7 @@ Thumbs.db
 *:Zone.Identifier
 
 deploy.sh
+
+# Operação interna
+local/
+scripts/deploy_iris.sh

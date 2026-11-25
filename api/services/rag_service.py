@@ -1031,11 +1031,8 @@ def _prepare_rag_context(
         category in LOGISTICS_CONTEXT_CATEGORIES
         and _is_specific_pledge_status_question(question)
     )
-    if specific_pledge_status_question:
-        ticket_chunks = []
-    else:
-        ticket_chunks = semantic_search(search_query, limit=max_chunks, source="tickets")
-        ticket_chunks = _filter_chunks(ticket_chunks)
+    # Tickets não são base para resposta externa (decisão da CGS, nov/2026).
+    ticket_chunks = []
 
     has_context = bool(project or region)
     include_logistics = has_context or (

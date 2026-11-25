@@ -11,3 +11,5 @@ openpyxl
 gunicorn
 eventlet
 gevent
+anthropic
+requests

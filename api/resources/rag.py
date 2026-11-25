@@ -1,12 +1,37 @@
 import json
+import logging
+import re
+
 from flask import Response, request, stream_with_context
 from flask_restx import Namespace, Resource, fields
 
+from api.services import limits, public_chat, voice_service
+from api.config import Config
 from api.services.history_service import update_satisfaction
 from api.services.rag_service import generate_rag_response, generate_rag_stream
 from api.database import get_cursor
 
 ns = Namespace("rag", description="RAG - Perguntas e respostas com IA")
+logger = logging.getLogger(__name__)
+LIMIT_MESSAGE = "We have reached the usage limit for now. Please try again later."
+
+
+def _public(sources):
+    """Trecho de ticket é conversa de outro cliente: nunca sai pela API pública."""
+    return {**sources, "tickets": []} if isinstance(sources, dict) else sources
+
+
+def _public_stream(chunks):
+    for chunk in chunks:
+        if '"sources"' in chunk and chunk.startswith("data: "):
+            try:
+                event = json.loads(chunk[6:])
+                event["sources"] = _public(event.get("sources"))
+                chunk = f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            except ValueError:
+                # Formato inesperado: melhor perder o evento do que vazar.
+                continue
+        yield chunk
 
 ticket_input = ns.model(
     "TicketInput",
@@ -70,7 +95,7 @@ class RAGTickets(Resource):
         max_chunks = min(max(data.get("max_chunks", 5), 1), 10)
 
         try:
-            return generate_rag_response(
+            response = generate_rag_response(
                 question=question,
                 max_chunks=max_chunks,
                 session_id=data.get("session_id", ""),
@@ -84,6 +109,7 @@ class RAGTickets(Resource):
                 original_question=data.get("original_question"),
                 original_answer=data.get("original_answer"),
             )
+            return {**response, "sources": _public(response.get("sources"))}
         except ConnectionError as e:
             ns.abort(503, str(e))
         except RuntimeError as e:
@@ -105,7 +131,7 @@ class RAGTicketsStream(Resource):
         max_chunks = min(max(data.get("max_chunks", 5), 1), 10)
 
         return Response(
-            generate_rag_stream(
+            _public_stream(generate_rag_stream(
                 question=question,
                 max_chunks=max_chunks,
                 session_id=data.get("session_id", ""),
@@ -118,7 +144,7 @@ class RAGTicketsStream(Resource):
                 parent_message_id=data.get("parent_message_id"),
                 original_question=data.get("original_question"),
                 original_answer=data.get("original_answer"),
-            ),
+            )),
             mimetype="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
@@ -167,14 +193,14 @@ class DrunagorRules(Resource):
 
         def stream():
             try:
-                for chunk in generate_rag_stream(
+                for chunk in _public_stream(generate_rag_stream(
                     question=question,
                     session_id=session_id,
                     chat_history=chat_history,
                     language=language,
                     project="Drunagor",
                     region="global",
-                ):
+                )):
                     yield chunk
             except Exception as e:
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
@@ -188,6 +214,62 @@ class DrunagorRules(Resource):
                 "Access-Control-Allow-Origin": "*",
             },
         )
+
+
+@ns.route("/public/chat")
+class PublicChat(Resource):
+    @ns.doc("public_chat")
+    def post(self):
+        """Chat da comunidade (SSE). Não usa tickets."""
+        data = request.get_json(force=True, silent=True) or {}
+        question = str(data.get("question") or "").strip()[:1500]
+        project = data.get("project")
+        if not question:
+            return {"message": "question is required"}, 400
+        session = re.sub(r"[^A-Za-z0-9-]", "", str(data.get("session_id") or ""))[:60]
+        if not limits.allow_question(session):
+            return {"message": LIMIT_MESSAGE}, 429
+        if project not in public_chat.PROJECTS:
+            project = None
+
+        def events():
+            try:
+                for event in public_chat.stream_answer(
+                    question, data.get("history") or [], project,
+                    re.sub(r"[^A-Za-z ]", "", str(data.get("region") or ""))[:30], session or "web",
+                ):
+                    yield f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
+            except Exception:
+                logger.exception("Falha no chat público")
+                yield 'data: {"type": "error"}\n\n'
+
+        return Response(stream_with_context(events()), mimetype="text/event-stream",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@ns.route("/voice")
+class RAGVoice(Resource):
+    @ns.doc("voice")
+    def post(self):
+        """Lê um texto com a voz do personagem (MP3)"""
+        data = request.get_json(force=True, silent=True) or {}
+        text = str(data.get("text") or "").strip()[: voice_service.MAX_CHARS]
+        if not text or not Config.POLLY_IDENTITY_POOL_ID:
+            return {"message": "voice unavailable"}, 404
+        if data.get("lang"):
+            voice = voice_service.VOICES.get(str(data["lang"]), "Joanna")
+        else:
+            voice = voice_service.voice_for(*(str(data.get(k) or "") for k in ("project", "character", "region")))
+        audio = voice_service.cached(text, voice)
+        if audio is None:
+            if not limits.allow_voice(len(text)):
+                return {"message": LIMIT_MESSAGE}, 429
+            try:
+                audio = voice_service.synthesize(text, voice)
+            except Exception as e:
+                logger.warning("Polly falhou: %s", e)
+                return {"message": "voice unavailable"}, 502
+        return Response(audio, mimetype="audio/mpeg")
 
 
 @ns.route("/satisfaction")

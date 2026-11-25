@@ -44,6 +44,7 @@ services:
 
   api:
     build: .
+    entrypoint: ["bash", "./entrypoint.sh"]
     ports:
       - "5001:5000"
     environment:
@@ -58,11 +59,33 @@ services:
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
       EMBEDDING_DIMENSIONS: ${EMBEDDING_DIMENSIONS:-768}
       LLM_MODEL: ${LLM_MODEL:-}
+      INTERNAL_ACCESS_CODE: ${INTERNAL_ACCESS_CODE:-}
+      INTERNAL_USERS: ${INTERNAL_USERS:-}
+      INTERNAL_GUEST: ${INTERNAL_GUEST:-}
+      FRESHDESK_API_KEY: ${FRESHDESK_API_KEY:-}
+      FRESHDESK_SYNC_MINUTES: ${FRESHDESK_SYNC_MINUTES:-10}
+      INTERNAL_LLM_MODEL: ${INTERNAL_LLM_MODEL:-}
+      INTERNAL_FALLBACK_MODELS: ${INTERNAL_FALLBACK_MODELS:-}
+      REVIEW_LABEL: ${REVIEW_LABEL:-}
+      REVIEW_NAME: ${REVIEW_NAME:-}
+      REVIEW_AGENTS: ${REVIEW_AGENTS:-}
+      REVIEW_UNTIL: ${REVIEW_UNTIL:-}
+      REVIEW_OTHERS: ${REVIEW_OTHERS:-}
+      CLAUDE_EFFORT: ${CLAUDE_EFFORT:-}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
+      POLLY_IDENTITY_POOL_ID: ${POLLY_IDENTITY_POOL_ID:-}
+      PUBLIC_DAILY_QUESTIONS: ${PUBLIC_DAILY_QUESTIONS:-}
+      PUBLIC_HOURLY_PER_IP: ${PUBLIC_HOURLY_PER_IP:-}
+      PUBLIC_LLM_MODEL: ${PUBLIC_LLM_MODEL:-}
+      PUBLIC_CLAUDE_EFFORT: ${PUBLIC_CLAUDE_EFFORT:-}
+      VOICE_DAILY_CHARS: ${VOICE_DAILY_CHARS:-}
+      FRESHDESK_URL: ${FRESHDESK_URL:-https://wearecgs.freshdesk.com}
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./api:/app/api
+      - ./entrypoint.sh:/app/entrypoint.sh:ro
       - ./scripts:/app/scripts
     logging:
       driver: "json-file"

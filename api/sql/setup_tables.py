@@ -13,7 +13,7 @@ SQL_DIR = Path(__file__).parent
 
 def _execute_sql_file(cur, path: Path) -> None:
     print(f"Executando {path.name}...")
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         sql = f.read()
     cur.execute(sql)
 
@@ -47,6 +47,9 @@ def setup_tables():
         else:
             print("Nenhum arquivo migrations.sql encontrado, pulando.")
 
+        conn.commit()
+
+        _execute_sql_file(cur, SQL_DIR / "internal_tables.sql")
         conn.commit()
 
         print("=" * 50)

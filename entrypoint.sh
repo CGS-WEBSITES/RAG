@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+# A imagem do servidor é anterior ao Claude e o disco não comporta rebuild.
+python -c "import anthropic" 2>/dev/null || pip install --no-cache-dir -q anthropic || echo "    Sem o SDK da Anthropic; o Claude fica desligado"
 DB_URL="postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
 echo "==> LLM Provider: ${LLM_PROVIDER:-openai}"
 echo "==> Embedding: OpenAI (sempre)"
@@ -72,7 +74,7 @@ exec gunicorn \
     --bind 0.0.0.0:5000 \
     --worker-class gthread \
     --workers 1 \
-    --threads 2 \
+    --threads 8 \
     --backlog 64 \
     --timeout 600 \
     --log-level info \
