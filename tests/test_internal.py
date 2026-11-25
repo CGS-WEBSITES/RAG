@@ -94,6 +94,7 @@ def fake_keys(monkeypatch):
     monkeypatch.setattr(Config, "REVIEW_OTHERS", "Beltrana")
     monkeypatch.setattr(Config, "INTERNAL_GUEST", "")
     monkeypatch.setattr(Config, "INTERNAL_LLM_MODEL", "gpt-x")
+    monkeypatch.setattr(Config, "INTERNAL_USERS", ["Ana"])
 
 
 @pytest.fixture
