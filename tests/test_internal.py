@@ -237,3 +237,36 @@ def test_falha_da_ferramenta_nao_derruba_a_resposta(monkeypatch):
     monkeypatch.setattr(agent, "openai_client", lambda: NS(chat=NS(completions=NS(create=lambda **k: rounds.pop(0)))))
     monkeypatch.setattr(store, "save_message", lambda **m: "id")
     assert list(assistant.stream_answer("x", [], "", "c"))[-1]["type"] == "done"
+
+
+def test_mascote_gasta_so_o_que_o_time_ganhou(http, monkeypatch):
+    monkeypatch.setattr(Config, "INTERNAL_ACCESS_CODE", "senha-de-teste")
+    token = http.post("/api/internal/login", json={"user": "Ana", "code": "senha-de-teste"}).get_json()["token"]
+    calls = []
+    monkeypatch.setattr(store, "pet_wallet", lambda author: {"balance": 3})
+    monkeypatch.setattr(store, "pet_spend", lambda author, amount, item: calls.append((author, amount, item)) or None)
+
+    def spend(body):
+        return http.post("/api/internal/pet/spend", json=body, headers={"Authorization": f"Bearer {token}"})
+
+    assert spend({"amount": 0}).status_code == 400
+    assert spend({"amount": "x"}).status_code == 400
+    assert spend({"amount": 5, "item": {"a": 1}}).status_code == 400
+    assert spend({"amount": 5, "item": "castelo"}).status_code == 402
+    assert calls == [("Ana", 5, "castelo")]
+
+
+def test_conta_respostas_publicas_da_equipe():
+    class Cur:
+        rows = []
+
+        def execute(self, sql, args):
+            self.rows.append(args)
+
+    cur = Cur()
+    store.add_replies(cur, 7, [
+        {"id": 1, "incoming": False, "private": False, "created_at": "2026-11-26T10:00:00Z"},
+        {"id": 2, "incoming": True, "private": False, "created_at": "2026-11-26T10:01:00Z"},
+        {"id": 3, "incoming": False, "private": True, "created_at": "2026-11-26T10:02:00Z"},
+    ])
+    assert cur.rows == [(1, 7, "2026-11-26T10:00:00Z")]

@@ -54,6 +54,50 @@ def set_pet(author: str, data: dict) -> None:
         )
 
 
+# Economia da mascote: o time inteiro ganha PET_COINS moedas por resposta no Freshdesk.
+PET_COINS = 10
+PET_TZ = "America/Sao_Paulo"
+
+
+def add_replies(cur, ticket_id: int, conversations: list[dict]) -> None:
+    for c in conversations:
+        if not c.get("incoming") and not c.get("private") and c.get("id"):
+            cur.execute("INSERT INTO ticket_replies VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+                        (c["id"], ticket_id, c["created_at"]))
+
+
+def pet_wallet(author: str) -> dict:
+    since = get_state("pet_since") or "2000-01-01T00:00:00Z"
+    with get_cursor() as cur:
+        cur.execute(
+            """SELECT count(*) FILTER (WHERE at >= %s) AS total,
+                      count(*) FILTER (WHERE at >= date_trunc('day', now() AT TIME ZONE %s) AT TIME ZONE %s) AS today
+               FROM ticket_replies""",
+            (since, PET_TZ, PET_TZ),
+        )
+        counts = cur.fetchone()
+        cur.execute("SELECT spent, owned FROM pet_wallet WHERE author = %s", (author,))
+        row = cur.fetchone() or {"spent": 0, "owned": []}
+    earned = counts["total"] * PET_COINS
+    return {"balance": max(0, earned - row["spent"]), "earned": earned, "spent": row["spent"],
+            "owned": row["owned"], "today": counts["today"], "per_ticket": PET_COINS}
+
+
+def pet_spend(author: str, amount: int, item: str | None = None) -> dict | None:
+    """Desconta se houver saldo; devolve a carteira nova ou None."""
+    earned = pet_wallet(author)["earned"]
+    with get_cursor() as cur:
+        cur.execute("INSERT INTO pet_wallet (author) VALUES (%s) ON CONFLICT DO NOTHING", (author,))
+        cur.execute(
+            """UPDATE pet_wallet SET spent = spent + %s,
+                      owned = CASE WHEN %s::text IS NULL OR owned ? %s::text THEN owned ELSE owned || to_jsonb(%s::text) END
+               WHERE author = %s AND spent + %s <= %s RETURNING spent""",
+            (amount, item, item, item, author, amount, earned),
+        )
+        ok = cur.fetchone()
+    return pet_wallet(author) if ok else None
+
+
 def content_hash(*parts) -> str:
     return hashlib.sha256("\x1f".join(str(p) for p in parts).encode()).hexdigest()
 

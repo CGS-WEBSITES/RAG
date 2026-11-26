@@ -10,6 +10,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from api.config import Config
 from api.database import get_cursor
@@ -132,8 +133,9 @@ def fetch(ticket_id: int) -> dict | None:
         logger.warning("Freshdesk indisponível: %s", type(e).__name__)
         return None
     ticket = convert(raw, keep_noise=True)
-    if ticket:
-        with get_cursor() as cur:
+    with get_cursor() as cur:
+        store.add_replies(cur, raw["id"], raw.get("conversations") or [])
+        if ticket:
             store.upsert_ticket(cur, ticket)
     return store.get_ticket(ticket["id"]) if ticket else None
 
@@ -145,6 +147,11 @@ def sync() -> int:
         last = store.overview()["dados_ate"]
         since = datetime.fromisoformat(last) if last else datetime.now() - timedelta(days=30)
         cursor = (since - timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
+    # Primeira vez com a economia da mascote: relê o dia de hoje para contar as respostas.
+    if not store.get_state("pet_since"):
+        today = datetime.now(ZoneInfo(store.PET_TZ)).replace(hour=0, minute=0, second=0, microsecond=0)
+        store.set_state("pet_since", today.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        cursor = min(cursor, store.get_state("pet_since"))
     started = datetime.now(timezone.utc)
     changed, page = [], 1
     while True:
@@ -157,11 +164,13 @@ def sync() -> int:
         time.sleep(SYNC_PAUSE)
     saved = 0
     for raw in changed:
-        ticket = convert(_with_conversations(raw, pause=SYNC_PAUSE))
-        if ticket:
-            with get_cursor() as cur:
+        full = _with_conversations(raw, pause=SYNC_PAUSE)
+        ticket = convert(full)
+        with get_cursor() as cur:
+            store.add_replies(cur, full["id"], full.get("conversations") or [])
+            if ticket:
                 store.upsert_ticket(cur, ticket)
-            saved += 1
+                saved += 1
     # Um minuto de folga cobre diferença de relógio; regravar é inofensivo.
     store.set_state("freshdesk_cursor", (started - timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ"))
     store.embed_pending()

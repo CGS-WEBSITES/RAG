@@ -45,6 +45,13 @@ CREATE INDEX IF NOT EXISTS idx_support_tickets_requester ON support_tickets (req
 
 CREATE TABLE IF NOT EXISTS pet_state (author TEXT PRIMARY KEY, data JSONB NOT NULL);
 
+-- Respostas públicas da equipe no Freshdesk: cada uma vale moedas para a mascote.
+CREATE TABLE IF NOT EXISTS ticket_replies (id BIGINT PRIMARY KEY, ticket_id BIGINT NOT NULL, at TIMESTAMPTZ NOT NULL);
+CREATE INDEX IF NOT EXISTS ticket_replies_at ON ticket_replies (at);
+
+-- O que cada conta já gastou e comprou. Fica fora de pet_state, que o navegador regrava.
+CREATE TABLE IF NOT EXISTS pet_wallet (author TEXT PRIMARY KEY, spent INT NOT NULL DEFAULT 0, owned JSONB NOT NULL DEFAULT '[]');
+
 -- Resumos e traduções prontos, refeitos só quando o ticket muda.
 CREATE TABLE IF NOT EXISTS ticket_ai (
     id TEXT, kind TEXT, content_hash TEXT NOT NULL, data JSONB NOT NULL, PRIMARY KEY (id, kind)

@@ -130,8 +130,8 @@ class Pet(Resource):
     method_decorators = [team_only]
 
     def get(self):
-        """Quintal da mascote desta conta."""
-        return {"data": store.get_pet(g.user)}
+        """Quintal da mascote desta conta e as moedas que o time ganhou respondendo tickets."""
+        return {"data": store.get_pet(g.user), "wallet": store.pet_wallet(g.user)}
 
     def put(self):
         data = _body()
@@ -139,6 +139,26 @@ class Pet(Resource):
             return {"message": "Grande demais"}, 400
         store.set_pet(g.user, data)
         return {"status": "ok"}
+
+
+@ns.route("/pet/spend")
+class PetSpend(Resource):
+    method_decorators = [team_only]
+
+    def post(self):
+        """Gasta moedas: brincar custa 1, itens custam o preço da loja."""
+        data = _body()
+        try:
+            amount = int(data.get("amount"))
+        except (TypeError, ValueError):
+            return {"message": "Valor inválido"}, 400
+        item = data.get("item")
+        if not 1 <= amount <= 1000 or (item is not None and (not isinstance(item, str) or len(item) > 40)):
+            return {"message": "Valor inválido"}, 400
+        wallet = store.pet_spend(g.user, amount, item)
+        if wallet is None:
+            return {"message": "Sem moedas", "wallet": store.pet_wallet(g.user)}, 402
+        return {"wallet": wallet}
 
 
 @ns.route("/conversations")
